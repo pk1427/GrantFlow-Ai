@@ -80,6 +80,38 @@ export default async function DashboardPage() {
           </div>
         </Card>
       </div>
+      <Card className="mt-6">
+        <h2 className="text-xl font-semibold">Indexed grants</h2>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+            <thead className="text-slate-400">
+              <tr className="border-b border-line">
+                <th className="py-3 pr-4 font-medium">Grant</th>
+                <th className="py-3 pr-4 font-medium">Status</th>
+                <th className="py-3 pr-4 font-medium">Milestone</th>
+                <th className="py-3 pr-4 font-medium">Amount</th>
+                <th className="py-3 pr-4 font-medium">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.grants.map((grant) => {
+                const milestone = grant.milestones[0];
+                return (
+                  <tr key={grant.id} className="border-b border-line/70 last:border-0">
+                    <td className="py-3 pr-4 font-medium">{grant.id}</td>
+                    <td className="py-3 pr-4"><Badge tone={grant.status === "RELEASED" ? "success" : "default"}>{grant.status}</Badge></td>
+                    <td className="py-3 pr-4 text-slate-300">{milestone?.status ?? "PENDING"}</td>
+                    <td className="py-3 pr-4 text-slate-300">{grant.total_amount} CSPR</td>
+                    <td className="py-3 pr-4">
+                      <LinkButton href={`/grants/${grant.id}`} className="h-8 px-3">Open</LinkButton>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import Link from "next/link";
 import { ApiStatus } from "@/components/api-status";
+import { HeaderNav } from "@/components/header-nav";
 import { WalletButton } from "@/components/wallet-button";
 import "./globals.css";
 
@@ -23,11 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
               <Link href="/" className="text-lg font-bold tracking-normal">
                 GrantFlow AI
               </Link>
-              <nav className="hidden items-center gap-5 text-sm text-slate-300 sm:flex">
-                <Link href="/dashboard">Dashboard</Link>
-                <Link href="/grants/new">Create Grant</Link>
-                <Link href="/grants/grant-001">Grant Details</Link>
-              </nav>
+              <HeaderNav />
               <WalletButton />
             </div>
           </header>

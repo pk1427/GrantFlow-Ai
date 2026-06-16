@@ -17,10 +17,11 @@ export default async function VerificationReportPage({ params }: { params: Promi
   const submission = state.submissions.find((item) => item.milestone_id === id);
   const release = state.transactions.find((item) => item.milestone_id === id && item.label === "Milestone release");
   const reasons = submission?.verification?.reasons ?? ["No submission has been verified for this milestone yet."];
+  const status = release ? "Release submitted" : submission ? "Verified, awaiting release" : "No submission";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <Badge tone={release ? "success" : "warn"}>{release ? "Release submitted" : "Awaiting release"}</Badge>
+      <Badge tone={release ? "success" : submission ? "default" : "warn"}>{status}</Badge>
       <h1 className="mt-3 text-3xl font-bold tracking-normal">AI verification report</h1>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.85fr]">
         <Card>
@@ -41,7 +42,13 @@ export default async function VerificationReportPage({ params }: { params: Promi
         <Card>
           <WalletCards className="text-cyan" size={30} />
           <h2 className="mt-4 text-xl font-semibold">Casper release</h2>
-          <p className="mt-2 text-sm text-slate-300">Funding agent called `release_payment()` on GrantEscrow.</p>
+          <p className="mt-2 text-sm text-slate-300">
+            {release
+              ? "Funding agent submitted `release_payment()` through the backend."
+              : submission
+                ? "Milestone is verified. Return to the grant details page to release payment."
+                : "Submit milestone evidence before payment can be released."}
+          </p>
           <div className="mt-5 rounded-md border border-line bg-ink p-4">
             <p className="text-sm text-slate-400">Transaction hash</p>
             {release?.tx_hash && explorerDeployUrl(release.tx_hash) ? (
@@ -54,7 +61,7 @@ export default async function VerificationReportPage({ params }: { params: Promi
           </div>
           <div className="mt-4 rounded-md border border-line bg-ink p-4">
             <p className="text-sm text-slate-400">Builder reputation</p>
-            <p className="mt-2 text-2xl font-semibold">98 +14</p>
+            <p className="mt-2 text-2xl font-semibold">{release ? "98 +14" : "84"}</p>
           </div>
         </Card>
       </div>
