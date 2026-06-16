@@ -34,8 +34,20 @@ Set it to `true` only in an environment where `casper-client` and the authorized
 1. Open the dashboard and create the "Deploy a working MVP" grant.
 2. View the locked escrow state and milestone details.
 3. Submit a GitHub repository URL and deployment URL.
-4. Review the AI verification report.
+4. Review the AI verification report with real GitHub and deployment checks.
 5. Confirm the mocked Casper release transaction and reputation update.
+
+## AI Verification Agent
+
+The backend verification agent checks:
+
+- GitHub repository accessibility.
+- Commit count of at least 10 commits.
+- README existence.
+- Latest commit within the last 14 days.
+- Deployment URL health via HTTP response.
+
+Set `GITHUB_TOKEN` in `apps/api/.env` if you need higher GitHub API rate limits during repeated demos.
 
 ## Full Local Workflow Test
 

@@ -34,6 +34,13 @@ export type Submission = {
     verified: boolean;
     confidence: number;
     reasons: string[];
+    checks: {
+      repositoryAccessible: boolean;
+      commitCount: number;
+      readmeFound: boolean;
+      latestCommitWithin14Days: boolean;
+      deploymentHealthy: boolean;
+    };
   };
   risk?: {
     risk_level: string;

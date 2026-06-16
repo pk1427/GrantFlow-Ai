@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CheckCircle2, ShieldAlert, WalletCards } from "lucide-react";
+import { CheckCircle2, Circle, ShieldAlert, WalletCards } from "lucide-react";
 import { ApiOffline } from "@/components/api-offline";
 import { Badge, Card } from "@/components/ui";
 import { explorerDeployUrl, apiFetch, isMockHash, shortHash, type IndexerState } from "@/lib/api";
@@ -30,6 +30,26 @@ export default async function VerificationReportPage({ params }: { params: Promi
             <Score label="Confidence" value={`${submission?.ai_score ?? 0}%`} icon={<CheckCircle2 />} />
             <Score label="Risk score" value={`${submission?.risk_score ?? 0}/100`} icon={<ShieldAlert />} />
           </div>
+          {submission ? (
+            <div className="mt-5 rounded-md border border-line bg-ink/60 p-4">
+              <p className="text-sm text-slate-400">Evidence</p>
+              <a className="mt-2 block break-all text-sm text-cyan" href={submission.github_url} target="_blank" rel="noreferrer">
+                {submission.github_url}
+              </a>
+              <a className="mt-1 block break-all text-sm text-cyan" href={submission.deployment_url} target="_blank" rel="noreferrer">
+                {submission.deployment_url}
+              </a>
+            </div>
+          ) : null}
+          {submission?.verification?.checks ? (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <CheckRow label="Repository accessible" ok={submission.verification.checks.repositoryAccessible} />
+              <CheckRow label={`Commits: ${submission.verification.checks.commitCount}`} ok={submission.verification.checks.commitCount >= 10} />
+              <CheckRow label="README found" ok={submission.verification.checks.readmeFound} />
+              <CheckRow label="Recent commit" ok={submission.verification.checks.latestCommitWithin14Days} />
+              <CheckRow label="Deployment healthy" ok={submission.verification.checks.deploymentHealthy} />
+            </div>
+          ) : null}
           <ul className="mt-6 space-y-3">
             {reasons.map((reason) => (
               <li key={reason} className="flex gap-3 text-sm text-slate-300">
@@ -77,6 +97,15 @@ function Score({ label, value, icon }: { label: string; value: string; icon: Rea
       <div className="mb-3 text-cyan">{icon}</div>
       <p className="text-sm text-slate-400">{label}</p>
       <p className="mt-1 text-3xl font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function CheckRow({ label, ok }: { label: string; ok: boolean }) {
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-line bg-ink/50 p-3 text-sm">
+      {ok ? <CheckCircle2 className="text-success" size={17} /> : <Circle className="text-slate-500" size={17} />}
+      <span className={ok ? "text-slate-200" : "text-slate-500"}>{label}</span>
     </div>
   );
 }

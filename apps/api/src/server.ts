@@ -142,7 +142,10 @@ app.post("/milestones/:id/submit", asyncRoute(async (req, res) => {
 
   milestone.status = "SUBMITTED";
   const verification = await runVerificationAgent({ githubUrl: input.github_url, deploymentUrl: input.deployment_url });
-  const risk = await runRiskAgent({ githubUrl: input.github_url, deploymentUrl: input.deployment_url });
+  const risk = await runRiskAgent(
+    { githubUrl: input.github_url, deploymentUrl: input.deployment_url },
+    submissions.map((submission) => submission.github_url)
+  );
   milestone.status = verification.verified && risk.risk_level !== "high" ? "VERIFIED" : "REJECTED";
 
   const submission = {
@@ -164,7 +167,10 @@ app.post("/milestones/:id/submit", asyncRoute(async (req, res) => {
 app.post("/agents/verify", asyncRoute(async (req, res) => {
   const input = submitSchema.parse(req.body);
   const verification = await runVerificationAgent({ githubUrl: input.github_url, deploymentUrl: input.deployment_url });
-  const risk = await runRiskAgent({ githubUrl: input.github_url, deploymentUrl: input.deployment_url });
+  const risk = await runRiskAgent(
+    { githubUrl: input.github_url, deploymentUrl: input.deployment_url },
+    submissions.map((submission) => submission.github_url)
+  );
   res.json({ verification, risk });
 }));
 
