@@ -120,5 +120,19 @@ export function shortHash(value?: string) {
 }
 
 export function explorerDeployUrl(hash?: string) {
-  return hash ? `https://testnet.cspr.live/deploy/${hash}` : undefined;
+  if (!hash || hash.startsWith("mock-")) return undefined;
+  return `https://testnet.cspr.live/deploy/${hash}`;
+}
+
+export function formatStatus(status?: string) {
+  if (!status) return "Unknown";
+  return status
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+export function isMockHash(hash?: string) {
+  return Boolean(hash?.startsWith("mock-"));
 }

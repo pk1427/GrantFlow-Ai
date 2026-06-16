@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { Activity, ArrowUpRight, Gauge, Trophy } from "lucide-react";
 import { ApiOffline } from "@/components/api-offline";
+import { GrantLifecycle } from "@/components/grant-lifecycle";
 import { Badge, Card, LinkButton } from "@/components/ui";
-import { apiFetch, explorerDeployUrl, shortHash, type IndexerState } from "@/lib/api";
+import { apiFetch, explorerDeployUrl, formatStatus, isMockHash, shortHash, type IndexerState } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,12 @@ export default async function DashboardPage() {
   }
   const latestGrant = state.grants.at(-1);
   const latestMilestone = latestGrant?.milestones[0];
+  const latestSubmission = latestMilestone
+    ? state.submissions.find((item) => item.milestone_id === latestMilestone.id)
+    : undefined;
+  const latestRelease = latestMilestone
+    ? state.transactions.find((item) => item.milestone_id === latestMilestone.id && item.label === "Milestone release")
+    : undefined;
   const stats = [
     { label: "Total grants", value: String(state.stats.total_grants) },
     { label: "Funds locked", value: `${state.stats.funds_locked} CSPR` },
@@ -44,7 +51,7 @@ export default async function DashboardPage() {
         <Card>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <Badge tone="success">{latestGrant?.status ?? "No grants"}</Badge>
+              <Badge tone={latestGrant?.status === "RELEASED" ? "success" : "default"}>{formatStatus(latestGrant?.status ?? "No grants")}</Badge>
               <h2 className="mt-4 text-2xl font-semibold">{latestMilestone?.title ?? "Create your first grant"}</h2>
               <p className="mt-2 text-sm text-slate-300">Escrowed milestone reward: {latestGrant?.total_amount ?? 0} CSPR</p>
             </div>
@@ -52,7 +59,7 @@ export default async function DashboardPage() {
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <Metric icon={<Activity size={18} />} label="AI confidence" value={`${state.stats.ai_score}%`} />
-            <Metric icon={<Trophy size={18} />} label="Contract state" value={state.source} />
+            <Metric icon={<Trophy size={18} />} label="State source" value={state.source} />
             <Metric icon={<ArrowUpRight size={18} />} label="Reputation" value="+14 pts" />
           </div>
           <LinkButton href={latestGrant ? `/grants/${latestGrant.id}` : "/grants/new"} className="mt-6">Open grant</LinkButton>
@@ -64,7 +71,7 @@ export default async function DashboardPage() {
               <div key={tx.id} className="border-b border-line pb-4 last:border-0 last:pb-0">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-medium">{tx.label}</p>
-                  <Badge tone="success">{tx.status}</Badge>
+                  <Badge tone="success">{formatStatus(tx.status)}</Badge>
                 </div>
                 <p className="mt-1 text-sm text-slate-400">{tx.amount} CSPR</p>
                 {explorerDeployUrl(tx.tx_hash) ? (
@@ -72,13 +79,18 @@ export default async function DashboardPage() {
                     {shortHash(tx.tx_hash)}
                   </a>
                 ) : (
-                  <p className="mt-1 break-all text-xs text-cyan">{shortHash(tx.tx_hash)}</p>
+                  <p className="mt-1 break-all text-xs text-cyan">
+                    {shortHash(tx.tx_hash)} {isMockHash(tx.tx_hash) ? <span className="text-slate-500">(local demo)</span> : null}
+                  </p>
                 )}
               </div>
             ))}
             {state.transactions.length === 0 ? <p className="text-sm text-slate-400">No indexed transactions yet.</p> : null}
           </div>
         </Card>
+      </div>
+      <div className="mt-6">
+        <GrantLifecycle grant={latestGrant} submission={latestSubmission} release={latestRelease} />
       </div>
       <Card className="mt-6">
         <h2 className="text-xl font-semibold">Indexed grants</h2>
@@ -99,8 +111,8 @@ export default async function DashboardPage() {
                 return (
                   <tr key={grant.id} className="border-b border-line/70 last:border-0">
                     <td className="py-3 pr-4 font-medium">{grant.id}</td>
-                    <td className="py-3 pr-4"><Badge tone={grant.status === "RELEASED" ? "success" : "default"}>{grant.status}</Badge></td>
-                    <td className="py-3 pr-4 text-slate-300">{milestone?.status ?? "PENDING"}</td>
+                    <td className="py-3 pr-4"><Badge tone={grant.status === "RELEASED" ? "success" : "default"}>{formatStatus(grant.status)}</Badge></td>
+                    <td className="py-3 pr-4 text-slate-300">{formatStatus(milestone?.status ?? "PENDING")}</td>
                     <td className="py-3 pr-4 text-slate-300">{grant.total_amount} CSPR</td>
                     <td className="py-3 pr-4">
                       <LinkButton href={`/grants/${grant.id}`} className="h-8 px-3">Open</LinkButton>

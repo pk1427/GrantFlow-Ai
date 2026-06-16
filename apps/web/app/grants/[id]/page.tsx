@@ -1,8 +1,9 @@
 import { Bot, CheckCircle2, ExternalLink } from "lucide-react";
 import { ApiOffline } from "@/components/api-offline";
+import { GrantLifecycle } from "@/components/grant-lifecycle";
 import { Badge, Card, LinkButton } from "@/components/ui";
 import { ReleasePaymentButton } from "@/components/release-payment-button";
-import { apiFetch, type Grant, type IndexerState } from "@/lib/api";
+import { explorerDeployUrl, formatStatus, isMockHash, shortHash, apiFetch, type Grant, type IndexerState } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export default async function GrantDetailsPage({ params }: { params: Promise<{ i
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <Badge tone="success">{grant.status}</Badge>
+          <Badge tone={grant.status === "RELEASED" ? "success" : "default"}>{formatStatus(grant.status)}</Badge>
           <h1 className="mt-3 text-3xl font-bold tracking-normal">{milestone.title}</h1>
           <p className="mt-2 break-all text-slate-300">Funder {grant.creator_wallet} · Builder {grant.builder_wallet ?? "Unassigned"}</p>
         </div>
@@ -50,7 +51,7 @@ export default async function GrantDetailsPage({ params }: { params: Promise<{ i
           <Bot className="text-cyan" size={30} />
           <h2 className="mt-4 text-xl font-semibold">AI verification</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            Confidence {submission?.ai_score ?? 0}%, risk {submission?.risk_score ?? 0}/100, status {milestone.status}.
+            Confidence {submission?.ai_score ?? 0}%, risk {submission?.risk_score ?? 0}/100, status {formatStatus(milestone.status)}.
           </p>
           <LinkButton href={`/reports/${milestone.id}`} className="mt-5">
             View report <ExternalLink size={16} />
@@ -58,7 +59,15 @@ export default async function GrantDetailsPage({ params }: { params: Promise<{ i
           {release ? (
             <div className="mt-5 rounded-md border border-success/40 bg-success/10 p-4">
               <p className="text-sm font-medium text-success">Payment released</p>
-              <p className="mt-2 break-all text-xs text-cyan">{release.tx_hash}</p>
+              {explorerDeployUrl(release.tx_hash) ? (
+                <a className="mt-2 block break-all text-xs text-cyan" href={explorerDeployUrl(release.tx_hash)} target="_blank" rel="noreferrer">
+                  View deploy {shortHash(release.tx_hash)}
+                </a>
+              ) : (
+                <p className="mt-2 break-all text-xs text-cyan">
+                  {shortHash(release.tx_hash)} {isMockHash(release.tx_hash) ? <span className="text-slate-500">(local demo)</span> : null}
+                </p>
+              )}
             </div>
           ) : null}
           {canRelease && grant.builder_wallet ? (
@@ -70,6 +79,9 @@ export default async function GrantDetailsPage({ params }: { params: Promise<{ i
             />
           ) : null}
         </Card>
+      </div>
+      <div className="mt-6">
+        <GrantLifecycle grant={grant} submission={submission} release={release} />
       </div>
     </div>
   );

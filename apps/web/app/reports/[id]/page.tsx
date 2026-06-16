@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { CheckCircle2, ShieldAlert, WalletCards } from "lucide-react";
 import { ApiOffline } from "@/components/api-offline";
 import { Badge, Card } from "@/components/ui";
-import { explorerDeployUrl, apiFetch, shortHash, type IndexerState } from "@/lib/api";
+import { explorerDeployUrl, apiFetch, isMockHash, shortHash, type IndexerState } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +56,9 @@ export default async function VerificationReportPage({ params }: { params: Promi
                 {shortHash(release.tx_hash)}
               </a>
             ) : (
-              <p className="mt-2 break-all text-sm text-cyan">{shortHash(release?.tx_hash)}</p>
+              <p className="mt-2 break-all text-sm text-cyan">
+                {shortHash(release?.tx_hash)} {isMockHash(release?.tx_hash) ? <span className="text-slate-500">(local demo)</span> : null}
+              </p>
             )}
           </div>
           <div className="mt-4 rounded-md border border-line bg-ink p-4">
