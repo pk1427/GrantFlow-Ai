@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import Link from "next/link";
-import { Wallet } from "lucide-react";
+import { WalletButton } from "@/components/wallet-button";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -27,10 +27,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
                 <Link href="/grants/new">Create Grant</Link>
                 <Link href="/grants/grant-001">Grant Details</Link>
               </nav>
-              <button className="inline-flex h-9 items-center gap-2 rounded-md border border-cyan/50 px-3 text-sm text-cyan">
-                <Wallet size={16} />
-                Casper Wallet
-              </button>
+              <WalletButton />
             </div>
           </header>
           <main>{children}</main>

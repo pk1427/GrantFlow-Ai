@@ -1,9 +1,22 @@
 import type { ReactNode } from "react";
 import { Activity, ArrowUpRight, Gauge, Trophy } from "lucide-react";
 import { Badge, Card, LinkButton } from "@/components/ui";
-import { demoGrant, stats, transactions } from "@/lib/demo-data";
+import { apiFetch, explorerDeployUrl, shortHash, type IndexerState } from "@/lib/api";
 
-export default function DashboardPage() {
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage() {
+  const state = await apiFetch<IndexerState>("/indexer/state");
+  const latestGrant = state.grants.at(-1);
+  const latestMilestone = latestGrant?.milestones[0];
+  const stats = [
+    { label: "Total grants", value: String(state.stats.total_grants) },
+    { label: "Funds locked", value: `${state.stats.funds_locked} CSPR` },
+    { label: "Funds released", value: `${state.stats.funds_released} CSPR` },
+    { label: "AI score", value: `${state.stats.ai_score}%` },
+    { label: "Reputation", value: String(state.stats.reputation_score) }
+  ];
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -25,32 +38,39 @@ export default function DashboardPage() {
         <Card>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <Badge tone="success">{demoGrant.status}</Badge>
-              <h2 className="mt-4 text-2xl font-semibold">{demoGrant.title}</h2>
-              <p className="mt-2 text-sm text-slate-300">Escrowed milestone reward: {demoGrant.amount} CSPR</p>
+              <Badge tone="success">{latestGrant?.status ?? "No grants"}</Badge>
+              <h2 className="mt-4 text-2xl font-semibold">{latestMilestone?.title ?? "Create your first grant"}</h2>
+              <p className="mt-2 text-sm text-slate-300">Escrowed milestone reward: {latestGrant?.total_amount ?? 0} CSPR</p>
             </div>
             <Gauge className="text-cyan" size={32} />
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <Metric icon={<Activity size={18} />} label="AI confidence" value={`${demoGrant.milestone.aiScore}%`} />
-            <Metric icon={<Trophy size={18} />} label="Risk score" value={`${demoGrant.milestone.riskScore}/100`} />
+            <Metric icon={<Activity size={18} />} label="AI confidence" value={`${state.stats.ai_score}%`} />
+            <Metric icon={<Trophy size={18} />} label="Contract state" value={state.source} />
             <Metric icon={<ArrowUpRight size={18} />} label="Reputation" value="+14 pts" />
           </div>
-          <LinkButton href="/grants/grant-001" className="mt-6">Open grant</LinkButton>
+          <LinkButton href={latestGrant ? `/grants/${latestGrant.id}` : "/grants/new"} className="mt-6">Open grant</LinkButton>
         </Card>
         <Card>
           <h2 className="text-xl font-semibold">Transaction history</h2>
           <div className="mt-4 space-y-4">
-            {transactions.map((tx) => (
+            {state.transactions.map((tx) => (
               <div key={tx.id} className="border-b border-line pb-4 last:border-0 last:pb-0">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-medium">{tx.label}</p>
                   <Badge tone="success">{tx.status}</Badge>
                 </div>
                 <p className="mt-1 text-sm text-slate-400">{tx.amount} CSPR</p>
-                <p className="mt-1 break-all text-xs text-cyan">{tx.hash}</p>
+                {explorerDeployUrl(tx.tx_hash) ? (
+                  <a className="mt-1 block break-all text-xs text-cyan" href={explorerDeployUrl(tx.tx_hash)} target="_blank" rel="noreferrer">
+                    {shortHash(tx.tx_hash)}
+                  </a>
+                ) : (
+                  <p className="mt-1 break-all text-xs text-cyan">{shortHash(tx.tx_hash)}</p>
+                )}
               </div>
             ))}
+            {state.transactions.length === 0 ? <p className="text-sm text-slate-400">No indexed transactions yet.</p> : null}
           </div>
         </Card>
       </div>

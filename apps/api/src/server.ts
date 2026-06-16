@@ -5,7 +5,7 @@ import express from "express";
 import { z } from "zod";
 import { runNotificationAgent, runRiskAgent, runVerificationAgent } from "./agents.js";
 import { createGrant, releasePayment } from "./casper.js";
-import { grants, submissions, transactions } from "./store.js";
+import { grants, submissions, transactions, type GrantRecord } from "./store.js";
 
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 
@@ -29,6 +29,32 @@ app.get("/health", (_req, res) => res.json({ ok: true, service: "grantflow-api" 
 
 app.get("/grants", (_req, res) => res.json(grants));
 
+app.get("/indexer/state", (_req, res) => {
+  const fundsLocked = grants
+    .filter((grant) => grant.status === "FUNDED" || grant.status === "ACCEPTED")
+    .reduce((sum, grant) => sum + grant.total_amount, 0);
+  const fundsReleased = transactions
+    .filter((tx) => tx.label === "Milestone release")
+    .reduce((sum, tx) => sum + tx.amount, 0);
+  const latestSubmission = submissions.at(-1);
+
+  res.json({
+    source: "backend-indexer",
+    network: "casper-test",
+    contractHash: process.env.CASPER_CONTRACT_HASH,
+    grants,
+    submissions,
+    transactions,
+    stats: {
+      total_grants: grants.length,
+      funds_locked: fundsLocked,
+      funds_released: fundsReleased,
+      ai_score: latestSubmission?.ai_score ?? 0,
+      reputation_score: 84 + transactions.filter((tx) => tx.label === "Milestone release").length * 14
+    }
+  });
+});
+
 app.get("/grants/:id", (req, res) => {
   const grant = grants.find((item) => item.id === req.params.id);
   if (!grant) return res.status(404).json({ error: "Grant not found" });
@@ -39,7 +65,7 @@ app.post("/grants", async (req, res) => {
   const input = createGrantSchema.parse(req.body);
   const grantId = `grant-${String(grants.length + 1).padStart(3, "0")}`;
   const milestoneId = `ms-${String(grants.length + 1).padStart(3, "0")}`;
-  const grant = {
+  const grant: GrantRecord = {
     id: grantId,
     creator_wallet: input.creator_wallet,
     builder_wallet: input.builder_wallet,
@@ -64,7 +90,20 @@ app.post("/grants", async (req, res) => {
       })
     : null;
 
+  grant.onchain = onchain;
   grants.push(grant);
+  if (onchain) {
+    transactions.push({
+      id: `tx-${transactions.length + 1}`,
+      grant_id: grant.id,
+      milestone_id: milestoneId,
+      label: "Grant created",
+      tx_hash: onchain.txHash,
+      amount: input.total_amount,
+      status: onchain.finalized ? "Finalized" : "Submitted",
+      release: onchain
+    });
+  }
   res.status(201).json({ ...grant, onchain });
 });
 
@@ -90,6 +129,7 @@ app.post("/milestones/:id/submit", async (req, res) => {
   const submission = {
     id: `sub-${submissions.length + 1}`,
     milestone_id: milestone.id,
+    grant_id: grant.id,
     github_url: input.github_url,
     deployment_url: input.deployment_url,
     ai_score: verification.confidence,
@@ -126,11 +166,18 @@ app.post("/payments/release", async (req, res) => {
   const transaction = {
     id: `tx-${transactions.length + 1}`,
     grant_id: input.grant_id,
+    milestone_id: input.milestone_id,
+    label: "Milestone release",
     tx_hash: release.txHash,
     amount: input.amount,
+    status: release.finalized ? "Finalized" : "Submitted",
     release
   };
   transactions.push(transaction);
+  const grant = grants.find((item) => item.id === input.grant_id);
+  const milestone = grant?.milestones.find((item) => item.id === input.milestone_id);
+  if (grant) grant.status = "RELEASED";
+  if (milestone) milestone.status = "PAID";
   await runNotificationAgent("funds.released", transaction);
   res.status(201).json(transaction);
 });

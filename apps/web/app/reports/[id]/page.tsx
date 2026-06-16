@@ -1,27 +1,27 @@
 import type { ReactNode } from "react";
 import { CheckCircle2, ShieldAlert, WalletCards } from "lucide-react";
 import { Badge, Card } from "@/components/ui";
-import { demoGrant } from "@/lib/demo-data";
+import { explorerDeployUrl, apiFetch, shortHash, type IndexerState } from "@/lib/api";
 
-export default function VerificationReportPage() {
-  const reasons = [
-    "Repository contains 18 commits",
-    "README found in default branch",
-    "Latest commit is within the last 14 days",
-    "Deployment returned HTTP 200",
-    "No duplicate repository match detected"
-  ];
+export const dynamic = "force-dynamic";
+
+export default async function VerificationReportPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const state = await apiFetch<IndexerState>("/indexer/state");
+  const submission = state.submissions.find((item) => item.milestone_id === id);
+  const release = state.transactions.find((item) => item.milestone_id === id && item.label === "Milestone release");
+  const reasons = submission?.verification?.reasons ?? ["No submission has been verified for this milestone yet."];
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <Badge tone="success">Release executed</Badge>
+      <Badge tone={release ? "success" : "warn"}>{release ? "Release submitted" : "Awaiting release"}</Badge>
       <h1 className="mt-3 text-3xl font-bold tracking-normal">AI verification report</h1>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.85fr]">
         <Card>
           <h2 className="text-xl font-semibold">Verification result</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <Score label="Confidence" value={`${demoGrant.milestone.aiScore}%`} icon={<CheckCircle2 />} />
-            <Score label="Risk score" value={`${demoGrant.milestone.riskScore}/100`} icon={<ShieldAlert />} />
+            <Score label="Confidence" value={`${submission?.ai_score ?? 0}%`} icon={<CheckCircle2 />} />
+            <Score label="Risk score" value={`${submission?.risk_score ?? 0}/100`} icon={<ShieldAlert />} />
           </div>
           <ul className="mt-6 space-y-3">
             {reasons.map((reason) => (
@@ -38,7 +38,13 @@ export default function VerificationReportPage() {
           <p className="mt-2 text-sm text-slate-300">Funding agent called `release_payment()` on GrantEscrow.</p>
           <div className="mt-5 rounded-md border border-line bg-ink p-4">
             <p className="text-sm text-slate-400">Transaction hash</p>
-            <p className="mt-2 break-all text-sm text-cyan">{demoGrant.releaseTx}</p>
+            {release?.tx_hash && explorerDeployUrl(release.tx_hash) ? (
+              <a className="mt-2 block break-all text-sm text-cyan" href={explorerDeployUrl(release.tx_hash)} target="_blank" rel="noreferrer">
+                {shortHash(release.tx_hash)}
+              </a>
+            ) : (
+              <p className="mt-2 break-all text-sm text-cyan">{shortHash(release?.tx_hash)}</p>
+            )}
           </div>
           <div className="mt-4 rounded-md border border-line bg-ink p-4">
             <p className="text-sm text-slate-400">Builder reputation</p>
