@@ -1,0 +1,9 @@
+[target.wasm32-unknown-unknown]
+rustflags = [
+  "--cfg",
+  "odra_module=\"GrantEscrow\"",
+  "-C",
+  "target-feature=-bulk-memory,-bulk-memory-opt",
+  "-C",
+  "link-arg=--allow-undefined",
+]

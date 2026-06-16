@@ -6,7 +6,7 @@ GrantFlow AI is a Casper testnet MVP for milestone-based grant funding. A funder
 
 - `apps/web`: Next.js 15, TypeScript, Tailwind UI for the complete demo flow.
 - `apps/api`: Express API with Prisma schema, agent orchestration, and Casper service boundary.
-- `contracts`: Odra-style Rust contract sources for `GrantFactory`, `GrantEscrow`, and `ReputationRegistry`.
+- `grant-escrow`: deployed Odra smart contract for the milestone escrow flow.
 - `docker-compose.yml`: local PostgreSQL.
 
 ## Local Setup
@@ -29,9 +29,34 @@ The web app runs on `http://localhost:3000`; the API defaults to `http://localho
 4. Review the AI verification report.
 5. Confirm the mocked Casper release transaction and reputation update.
 
+## Casper Testnet Deployment
+
+- Deploy Hash:
+  `758485e289bf2339f445a00012dcdcb2cc2f9641e2ff320708172dab0a39ceed`
+
+- Contract Hash:
+  `hash-127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f`
+
+- Package Hash:
+  `hash-3b795847d0b0dbc46a4e4b5f402e15a445b2ca33fc082480020e05686f181c52`
+
+- Authorized Releaser:
+  `account-hash-1130715646e6847e65732ba746ecad6fce0f33ba4ac6c9f4f021674cea2ab3a5`
+
+- Network:
+  Casper Testnet
+
 ## Casper Integration Notes
 
-`apps/api/src/casper.ts` contains the production integration boundary. The MVP returns deterministic testnet-shaped hashes when `CASPER_*` contract hashes or signing keys are not configured, so the hackathon demo remains runnable locally.
+`apps/api/src/casper.ts` calls the deployed `GrantEscrow` contract through `casper-client` when `CASPER_CONTRACT_HASH` and `CASPER_SECRET_KEY` are configured. If those values are absent, the API returns deterministic local-demo hashes so the UI remains runnable without a funded signing wallet.
+
+Direct contract calls should target:
+
+```text
+hash-127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f
+```
+
+Do not commit `apps/api/.env`; it contains the authorized releaser secret key path.
 
 ## API Endpoints
 

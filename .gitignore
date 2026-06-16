@@ -3,8 +3,14 @@ node_modules
 dist
 .env
 .env.local
+apps/api/.env
+apps/web/.env.local
+.casper
+*.pem
+*.secret
 coverage
 *.log
 *.tsbuildinfo
 target
+grant-escrow/target
 .DS_Store
