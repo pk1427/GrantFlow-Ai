@@ -50,6 +50,11 @@ The web app runs on `http://localhost:3000`; the API defaults to `http://localho
 
 `apps/api/src/casper.ts` calls the deployed `GrantEscrow` contract through `casper-client` when `CASPER_CONTRACT_HASH` and `CASPER_SECRET_KEY` are configured. If those values are absent, the API returns deterministic local-demo hashes so the UI remains runnable without a funded signing wallet.
 
+Integrated entry points:
+
+- `POST /grants` -> `create_grant(grant_id, builder, amount)`
+- `POST /payments/release` -> `release_payment(grant_id)`
+
 Direct contract calls should target:
 
 ```text
@@ -57,6 +62,8 @@ hash-127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f
 ```
 
 Do not commit `apps/api/.env`; it contains the authorized releaser secret key path.
+
+For real `create_grant` calls, pass the builder as a Casper `account-hash-*` value.
 
 ## API Endpoints
 

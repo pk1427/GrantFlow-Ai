@@ -1,10 +1,13 @@
-import "dotenv/config";
+import { fileURLToPath } from "node:url";
 import cors from "cors";
+import dotenv from "dotenv";
 import express from "express";
 import { z } from "zod";
 import { runNotificationAgent, runRiskAgent, runVerificationAgent } from "./agents.js";
-import { releasePayment } from "./casper.js";
+import { createGrant, releasePayment } from "./casper.js";
 import { grants, submissions, transactions } from "./store.js";
+
+dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 
 const app = express();
 app.use(cors());
@@ -32,17 +35,19 @@ app.get("/grants/:id", (req, res) => {
   return res.json(grant);
 });
 
-app.post("/grants", (req, res) => {
+app.post("/grants", async (req, res) => {
   const input = createGrantSchema.parse(req.body);
+  const grantId = `grant-${String(grants.length + 1).padStart(3, "0")}`;
+  const milestoneId = `ms-${String(grants.length + 1).padStart(3, "0")}`;
   const grant = {
-    id: `grant-${String(grants.length + 1).padStart(3, "0")}`,
+    id: grantId,
     creator_wallet: input.creator_wallet,
     builder_wallet: input.builder_wallet,
     total_amount: input.total_amount,
     status: "FUNDED",
     milestones: [
       {
-        id: `ms-${String(grants.length + 1).padStart(3, "0")}`,
+        id: milestoneId,
         title: input.title,
         amount: input.total_amount,
         verification_rules: ["GitHub repository", "10 commits", "README", "HTTP 200 deployment", "Recent commit"],
@@ -50,8 +55,17 @@ app.post("/grants", (req, res) => {
       }
     ]
   };
+
+  const onchain = input.builder_wallet
+    ? await createGrant({
+        grantId,
+        builderWallet: input.builder_wallet,
+        amount: input.total_amount
+      })
+    : null;
+
   grants.push(grant);
-  res.status(201).json(grant);
+  res.status(201).json({ ...grant, onchain });
 });
 
 app.post("/grants/:id/accept", (req, res) => {

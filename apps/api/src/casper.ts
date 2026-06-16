@@ -11,6 +11,53 @@ export type ReleasePaymentInput = {
   builderWallet: string;
 };
 
+export type CreateGrantInput = {
+  grantId: string;
+  builderWallet: string;
+  amount: number;
+};
+
+export async function createGrant(input: CreateGrantInput) {
+  const configured = Boolean(process.env.CASPER_CONTRACT_HASH && process.env.CASPER_SECRET_KEY);
+  const grantId = toContractGrantId(input.grantId);
+  const amountMotes = csprToMotes(input.amount);
+
+  if (configured) {
+    if (!input.builderWallet.startsWith("account-hash-")) {
+      throw new Error("builderWallet must be an account-hash-* value for Casper create_grant calls");
+    }
+
+    const deploy = await callGrantEscrow("create_grant", [
+      `grant_id:u64='${grantId}'`,
+      `builder:account_hash='${stripAccountHashPrefix(input.builderWallet)}'`,
+      `amount:U512='${amountMotes}'`
+    ]);
+
+    return {
+      network: "casper-test",
+      contractHash: process.env.CASPER_CONTRACT_HASH,
+      txHash: deploy.deployHash,
+      finalized: false,
+      mode: "casper-testnet",
+      entryPoint: "create_grant"
+    };
+  }
+
+  return {
+    network: "casper-test",
+    contractHash: process.env.CASPER_CONTRACT_HASH ?? "mock-grant-escrow",
+    txHash: deterministicMockHash({
+      grantId: input.grantId,
+      milestoneId: "create",
+      amount: input.amount,
+      builderWallet: input.builderWallet
+    }),
+    finalized: true,
+    mode: "local-demo",
+    entryPoint: "create_grant"
+  };
+}
+
 export async function releasePayment(input: ReleasePaymentInput) {
   const configured = Boolean(process.env.CASPER_CONTRACT_HASH && process.env.CASPER_SECRET_KEY);
   const grantId = toContractGrantId(input.grantId);
@@ -55,6 +102,10 @@ function deterministicMockHash(input: ReleasePaymentInput) {
   return `mock-${txHash.slice(0, 24)}`;
 }
 
+function csprToMotes(amount: number) {
+  return BigInt(Math.round(amount * 1_000_000_000)).toString();
+}
+
 async function callGrantEscrow(entryPoint: string, sessionArgs: string[]) {
   const contractHash = process.env.CASPER_CONTRACT_HASH;
   const secretKey = process.env.CASPER_SECRET_KEY;
@@ -91,6 +142,10 @@ async function callGrantEscrow(entryPoint: string, sessionArgs: string[]) {
 
 function stripHashPrefix(hash: string) {
   return hash.replace(/^hash-/, "");
+}
+
+function stripAccountHashPrefix(accountHash: string) {
+  return accountHash.replace(/^account-hash-/, "");
 }
 
 function parseDeployHash(output: string) {
