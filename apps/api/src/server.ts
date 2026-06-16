@@ -136,6 +136,9 @@ app.post("/milestones/:id/submit", asyncRoute(async (req, res) => {
   const grant = grants.find((item) => item.milestones.some((milestone) => milestone.id === req.params.id));
   const milestone = grant?.milestones.find((item) => item.id === req.params.id);
   if (!grant || !milestone) return res.status(404).json({ error: "Milestone not found" });
+  if (milestone.status === "PAID") {
+    return res.status(409).json({ error: "Milestone is already paid and cannot be resubmitted" });
+  }
 
   milestone.status = "SUBMITTED";
   const verification = await runVerificationAgent({ githubUrl: input.github_url, deploymentUrl: input.deployment_url });
@@ -173,6 +176,19 @@ app.post("/payments/release", asyncRoute(async (req, res) => {
     builder_wallet: z.string().min(4)
   });
   const input = schema.parse(req.body);
+  const grant = grants.find((item) => item.id === input.grant_id);
+  const milestone = grant?.milestones.find((item) => item.id === input.milestone_id);
+  if (!grant || !milestone) return res.status(404).json({ error: "Grant or milestone not found" });
+
+  const existingRelease = transactions.find(
+    (tx) => tx.grant_id === input.grant_id && tx.milestone_id === input.milestone_id && tx.label === "Milestone release"
+  );
+  if (existingRelease) return res.status(200).json(existingRelease);
+
+  if (milestone.status !== "VERIFIED") {
+    return res.status(409).json({ error: `Milestone must be VERIFIED before release. Current status: ${milestone.status}` });
+  }
+
   const release = await releasePayment({
     grantId: input.grant_id,
     milestoneId: input.milestone_id,
@@ -190,10 +206,8 @@ app.post("/payments/release", asyncRoute(async (req, res) => {
     release
   };
   transactions.push(transaction);
-  const grant = grants.find((item) => item.id === input.grant_id);
-  const milestone = grant?.milestones.find((item) => item.id === input.milestone_id);
-  if (grant) grant.status = "RELEASED";
-  if (milestone) milestone.status = "PAID";
+  grant.status = "RELEASED";
+  milestone.status = "PAID";
   await runNotificationAgent("funds.released", transaction);
   res.status(201).json(transaction);
 }));

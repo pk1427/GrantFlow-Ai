@@ -20,6 +20,9 @@ export default async function GrantDetailsPage({ params }: { params: Promise<{ i
   }
   const milestone = grant.milestones[0];
   const submission = state.submissions.find((item) => item.milestone_id === milestone.id);
+  const release = state.transactions.find((item) => item.milestone_id === milestone.id && item.label === "Milestone release");
+  const canSubmit = milestone.status !== "PAID";
+  const canRelease = Boolean(submission && grant.builder_wallet && milestone.status === "VERIFIED" && !release);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -29,7 +32,7 @@ export default async function GrantDetailsPage({ params }: { params: Promise<{ i
           <h1 className="mt-3 text-3xl font-bold tracking-normal">{milestone.title}</h1>
           <p className="mt-2 break-all text-slate-300">Funder {grant.creator_wallet} · Builder {grant.builder_wallet ?? "Unassigned"}</p>
         </div>
-        <LinkButton href={`/grants/${grant.id}/submit`}>Submit evidence</LinkButton>
+        {canSubmit ? <LinkButton href={`/grants/${grant.id}/submit`}>Submit evidence</LinkButton> : null}
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.8fr]">
         <Card>
@@ -52,7 +55,13 @@ export default async function GrantDetailsPage({ params }: { params: Promise<{ i
           <LinkButton href={`/reports/${milestone.id}`} className="mt-5">
             View report <ExternalLink size={16} />
           </LinkButton>
-          {submission && grant.builder_wallet ? (
+          {release ? (
+            <div className="mt-5 rounded-md border border-success/40 bg-success/10 p-4">
+              <p className="text-sm font-medium text-success">Payment released</p>
+              <p className="mt-2 break-all text-xs text-cyan">{release.tx_hash}</p>
+            </div>
+          ) : null}
+          {canRelease && grant.builder_wallet ? (
             <ReleasePaymentButton
               grantId={grant.id}
               milestoneId={milestone.id}
