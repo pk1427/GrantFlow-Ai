@@ -18,7 +18,7 @@ export type CreateGrantInput = {
 };
 
 export async function createGrant(input: CreateGrantInput) {
-  const configured = Boolean(process.env.CASPER_CONTRACT_HASH && process.env.CASPER_SECRET_KEY);
+  const configured = isOnchainEnabled();
   const grantId = toContractGrantId(input.grantId);
   const amountMotes = csprToMotes(input.amount);
 
@@ -59,7 +59,7 @@ export async function createGrant(input: CreateGrantInput) {
 }
 
 export async function releasePayment(input: ReleasePaymentInput) {
-  const configured = Boolean(process.env.CASPER_CONTRACT_HASH && process.env.CASPER_SECRET_KEY);
+  const configured = isOnchainEnabled();
   const grantId = toContractGrantId(input.grantId);
 
   if (configured) {
@@ -106,6 +106,13 @@ function csprToMotes(amount: number) {
   return BigInt(Math.round(amount * 1_000_000_000)).toString();
 }
 
+function isOnchainEnabled() {
+  return (
+    process.env.CASPER_ONCHAIN_ENABLED === "true" &&
+    Boolean(process.env.CASPER_CONTRACT_HASH && process.env.CASPER_SECRET_KEY)
+  );
+}
+
 async function callGrantEscrow(entryPoint: string, sessionArgs: string[]) {
   const contractHash = process.env.CASPER_CONTRACT_HASH;
   const secretKey = process.env.CASPER_SECRET_KEY;
@@ -133,11 +140,30 @@ async function callGrantEscrow(entryPoint: string, sessionArgs: string[]) {
     ...sessionArgs.flatMap((arg) => ["--session-arg", arg])
   ];
 
-  const { stdout, stderr } = await execFileAsync(clientPath, args, { windowsHide: true });
+  let stdout = "";
+  let stderr = "";
+
+  try {
+    const result = await execFileAsync(clientPath, args, { windowsHide: true });
+    stdout = result.stdout;
+    stderr = result.stderr;
+  } catch (error) {
+    if (isMissingExecutableError(error)) {
+      throw new Error(
+        `Casper on-chain mode is enabled, but "${clientPath}" is not available in this shell. Install casper-client or set CASPER_ONCHAIN_ENABLED=false for local demo mode.`
+      );
+    }
+    throw error;
+  }
+
   const output = `${stdout}\n${stderr}`;
   const deployHash = parseDeployHash(output);
 
   return { deployHash, output };
+}
+
+function isMissingExecutableError(error: unknown) {
+  return Boolean(error && typeof error === "object" && "code" in error && error.code === "ENOENT");
 }
 
 function stripHashPrefix(hash: string) {

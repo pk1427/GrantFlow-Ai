@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import Link from "next/link";
+import { ApiStatus } from "@/components/api-status";
 import { WalletButton } from "@/components/wallet-button";
 import "./globals.css";
 
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
               <WalletButton />
             </div>
           </header>
+          <ApiStatus />
           <main>{children}</main>
         </div>
       </body>

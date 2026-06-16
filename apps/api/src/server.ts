@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import cors from "cors";
 import dotenv from "dotenv";
-import express from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import { z } from "zod";
 import { runNotificationAgent, runRiskAgent, runVerificationAgent } from "./agents.js";
 import { createGrant, releasePayment } from "./casper.js";
@@ -24,6 +24,12 @@ const submitSchema = z.object({
   github_url: z.string().url(),
   deployment_url: z.string().url()
 });
+
+const asyncRoute =
+  (handler: (req: Request, res: Response, next: NextFunction) => Promise<unknown>) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    handler(req, res, next).catch(next);
+  };
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "grantflow-api" }));
 
@@ -61,7 +67,7 @@ app.get("/grants/:id", (req, res) => {
   return res.json(grant);
 });
 
-app.post("/grants", async (req, res) => {
+app.post("/grants", asyncRoute(async (req, res) => {
   const input = createGrantSchema.parse(req.body);
   const grantId = `grant-${String(grants.length + 1).padStart(3, "0")}`;
   const milestoneId = `ms-${String(grants.length + 1).padStart(3, "0")}`;
@@ -105,7 +111,7 @@ app.post("/grants", async (req, res) => {
     });
   }
   res.status(201).json({ ...grant, onchain });
-});
+}));
 
 app.post("/grants/:id/accept", (req, res) => {
   const grant = grants.find((item) => item.id === req.params.id);
@@ -115,7 +121,7 @@ app.post("/grants/:id/accept", (req, res) => {
   res.json(grant);
 });
 
-app.post("/milestones/:id/submit", async (req, res) => {
+app.post("/milestones/:id/submit", asyncRoute(async (req, res) => {
   const input = submitSchema.parse(req.body);
   const grant = grants.find((item) => item.milestones.some((milestone) => milestone.id === req.params.id));
   const milestone = grant?.milestones.find((item) => item.id === req.params.id);
@@ -140,16 +146,16 @@ app.post("/milestones/:id/submit", async (req, res) => {
   submissions.push(submission);
   await runNotificationAgent("verification.completed", submission);
   res.status(201).json(submission);
-});
+}));
 
-app.post("/agents/verify", async (req, res) => {
+app.post("/agents/verify", asyncRoute(async (req, res) => {
   const input = submitSchema.parse(req.body);
   const verification = await runVerificationAgent({ githubUrl: input.github_url, deploymentUrl: input.deployment_url });
   const risk = await runRiskAgent({ githubUrl: input.github_url, deploymentUrl: input.deployment_url });
   res.json({ verification, risk });
-});
+}));
 
-app.post("/payments/release", async (req, res) => {
+app.post("/payments/release", asyncRoute(async (req, res) => {
   const schema = z.object({
     grant_id: z.string(),
     milestone_id: z.string(),
@@ -180,9 +186,18 @@ app.post("/payments/release", async (req, res) => {
   if (milestone) milestone.status = "PAID";
   await runNotificationAgent("funds.released", transaction);
   res.status(201).json(transaction);
-});
+}));
 
 app.get("/transactions", (_req, res) => res.json(transactions));
+
+app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  if (error instanceof z.ZodError) {
+    return res.status(400).json({ error: "Invalid request", details: error.flatten() });
+  }
+
+  const message = error instanceof Error ? error.message : "Unexpected API error";
+  return res.status(500).json({ error: message });
+});
 
 const port = Number(process.env.PORT ?? 4000);
 app.listen(port, () => {

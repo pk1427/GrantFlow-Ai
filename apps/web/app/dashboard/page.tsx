@@ -1,12 +1,18 @@
 import type { ReactNode } from "react";
 import { Activity, ArrowUpRight, Gauge, Trophy } from "lucide-react";
+import { ApiOffline } from "@/components/api-offline";
 import { Badge, Card, LinkButton } from "@/components/ui";
 import { apiFetch, explorerDeployUrl, shortHash, type IndexerState } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const state = await apiFetch<IndexerState>("/indexer/state");
+  let state: IndexerState;
+  try {
+    state = await apiFetch<IndexerState>("/indexer/state");
+  } catch {
+    return <ApiOffline title="Dashboard needs the backend API" />;
+  }
   const latestGrant = state.grants.at(-1);
   const latestMilestone = latestGrant?.milestones[0];
   const stats = [

@@ -21,6 +21,14 @@ npm run dev
 
 The web app runs on `http://localhost:3000`; the API defaults to `http://localhost:4000`.
 
+For Windows local demo mode, keep this in `apps/api/.env`:
+
+```bash
+CASPER_ONCHAIN_ENABLED=false
+```
+
+Set it to `true` only in an environment where `casper-client` and the authorized releaser secret key path are available.
+
 ## Demo Flow
 
 1. Open the dashboard and create the "Deploy a working MVP" grant.
@@ -28,6 +36,33 @@ The web app runs on `http://localhost:3000`; the API defaults to `http://localho
 3. Submit a GitHub repository URL and deployment URL.
 4. Review the AI verification report.
 5. Confirm the mocked Casper release transaction and reputation update.
+
+## Full Local Workflow Test
+
+Run the API first:
+
+```bash
+npm run dev:api
+```
+
+Run the frontend in a second terminal:
+
+```bash
+npm run dev
+```
+
+Then test:
+
+1. Open `http://localhost:3000`.
+2. Click **Connect Wallet**. If the Casper extension is not installed, the UI shows `Wallet missing`; the flow still works in local demo mode.
+3. Open `http://localhost:3000/dashboard` and confirm indexed backend stats load.
+4. Open `http://localhost:3000/grants/new`.
+5. Create a grant. With `CASPER_ONCHAIN_ENABLED=false`, the API returns a deterministic `local-demo` transaction instead of calling `casper-client`.
+6. Open the created grant details page.
+7. Click **Submit evidence** and run verification.
+8. Open the generated report.
+9. Return to the grant details page and click **Release payment**.
+10. Confirm the dashboard transaction history and report page show the release hash.
 
 ## Casper Testnet Deployment
 

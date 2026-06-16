@@ -1,4 +1,5 @@
 import { Bot, CheckCircle2, ExternalLink } from "lucide-react";
+import { ApiOffline } from "@/components/api-offline";
 import { Badge, Card, LinkButton } from "@/components/ui";
 import { ReleasePaymentButton } from "@/components/release-payment-button";
 import { apiFetch, type Grant, type IndexerState } from "@/lib/api";
@@ -7,10 +8,16 @@ export const dynamic = "force-dynamic";
 
 export default async function GrantDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [grant, state] = await Promise.all([
-    apiFetch<Grant>(`/grants/${id}`),
-    apiFetch<IndexerState>("/indexer/state")
-  ]);
+  let grant: Grant;
+  let state: IndexerState;
+  try {
+    [grant, state] = await Promise.all([
+      apiFetch<Grant>(`/grants/${id}`),
+      apiFetch<IndexerState>("/indexer/state")
+    ]);
+  } catch {
+    return <ApiOffline title="Grant details need the backend API" />;
+  }
   const milestone = grant.milestones[0];
   const submission = state.submissions.find((item) => item.milestone_id === milestone.id);
 

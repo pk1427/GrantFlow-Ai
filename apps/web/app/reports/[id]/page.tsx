@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { CheckCircle2, ShieldAlert, WalletCards } from "lucide-react";
+import { ApiOffline } from "@/components/api-offline";
 import { Badge, Card } from "@/components/ui";
 import { explorerDeployUrl, apiFetch, shortHash, type IndexerState } from "@/lib/api";
 
@@ -7,7 +8,12 @@ export const dynamic = "force-dynamic";
 
 export default async function VerificationReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const state = await apiFetch<IndexerState>("/indexer/state");
+  let state: IndexerState;
+  try {
+    state = await apiFetch<IndexerState>("/indexer/state");
+  } catch {
+    return <ApiOffline title="Verification report needs the backend API" />;
+  }
   const submission = state.submissions.find((item) => item.milestone_id === id);
   const release = state.transactions.find((item) => item.milestone_id === id && item.label === "Milestone release");
   const reasons = submission?.verification?.reasons ?? ["No submission has been verified for this milestone yet."];
