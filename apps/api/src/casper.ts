@@ -17,6 +17,17 @@ export type CreateGrantInput = {
   amount: number;
 };
 
+export function getCasperRuntimeConfig() {
+  return {
+    network: "casper-test",
+    onchainEnabled: isOnchainEnabled(),
+    contractHash: process.env.CASPER_CONTRACT_HASH,
+    contractPackageHash: process.env.CASPER_CONTRACT_PACKAGE_HASH,
+    authorizedReleaser: process.env.CASPER_AUTHORIZED_RELEASER,
+    clientPath: process.env.CASPER_CLIENT_PATH ?? "casper-client"
+  };
+}
+
 export async function createGrant(input: CreateGrantInput) {
   const configured = isOnchainEnabled();
   const grantId = toContractGrantId(input.grantId);

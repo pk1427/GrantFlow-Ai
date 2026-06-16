@@ -73,6 +73,21 @@ export type IndexerState = {
   };
 };
 
+export type AppConfig = {
+  casper: {
+    network: string;
+    onchainEnabled: boolean;
+    contractHash?: string;
+    contractPackageHash?: string;
+    authorizedReleaser?: string;
+    clientPath: string;
+  };
+  indexer: {
+    source: string;
+    frontendReadsBlockchain: boolean;
+  };
+};
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,

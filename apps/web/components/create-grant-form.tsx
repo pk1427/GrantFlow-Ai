@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Coins, Plus } from "lucide-react";
 import { Button } from "@/components/ui";
-import { apiFetch, type Grant } from "@/lib/api";
+import { apiFetch, shortHash, type AppConfig, type Grant } from "@/lib/api";
 
 const defaultBuilder = "account-hash-1130715646e6847e65732ba746ecad6fce0f33ba4ac6c9f4f021674cea2ab3a5";
 
@@ -12,6 +12,13 @@ export function CreateGrantForm() {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [config, setConfig] = useState<AppConfig | null>(null);
+
+  useEffect(() => {
+    apiFetch<AppConfig>("/config")
+      .then(setConfig)
+      .catch(() => undefined);
+  }, []);
 
   async function submit(formData: FormData) {
     setPending(true);
@@ -42,6 +49,17 @@ export function CreateGrantForm() {
         <span className="text-sm text-slate-300">Grant title</span>
         <input name="title" className="rounded-md border border-line bg-ink px-3 py-2" defaultValue="Deploy a working MVP" />
       </label>
+      {config ? (
+        <div className="rounded-md border border-line bg-ink/70 p-4 text-sm text-slate-300">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>Funding mode</span>
+            <span className={config.casper.onchainEnabled ? "text-success" : "text-cyan"}>
+              {config.casper.onchainEnabled ? "Casper testnet live" : "Local demo transaction"}
+            </span>
+          </div>
+          <p className="mt-2 break-all text-xs text-slate-400">Contract {shortHash(config.casper.contractHash)}</p>
+        </div>
+      ) : null}
       <label className="grid gap-2">
         <span className="text-sm text-slate-300">Builder account hash</span>
         <input name="builder_wallet" className="rounded-md border border-line bg-ink px-3 py-2" defaultValue={defaultBuilder} />

@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { z } from "zod";
 import { runNotificationAgent, runRiskAgent, runVerificationAgent } from "./agents.js";
-import { createGrant, releasePayment } from "./casper.js";
+import { createGrant, getCasperRuntimeConfig, releasePayment } from "./casper.js";
 import { grants, submissions, transactions, type GrantRecord } from "./store.js";
 
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
@@ -32,6 +32,16 @@ const asyncRoute =
   };
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "grantflow-api" }));
+
+app.get("/config", (_req, res) => {
+  res.json({
+    casper: getCasperRuntimeConfig(),
+    indexer: {
+      source: "backend-indexer",
+      frontendReadsBlockchain: false
+    }
+  });
+});
 
 app.get("/grants", (_req, res) => res.json(grants));
 
