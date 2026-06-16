@@ -1,0 +1,17 @@
+{
+  "name": "grantflow-ai",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Autonomous milestone-based funding protocol demo for Casper Network.",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @grantflow/web",
+    "dev:api": "npm run dev --workspace @grantflow/api",
+    "build": "npm run build --workspace @grantflow/web && npm run build --workspace @grantflow/api",
+    "lint": "npm run lint --workspace @grantflow/web",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "license": "MIT"
+}

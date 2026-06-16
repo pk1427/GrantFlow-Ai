@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String  @id @default(cuid())
+  walletAddress String  @unique
+  role          Role
+  grantsCreated Grant[] @relation("GrantCreator")
+  grantsBuilt   Grant[] @relation("GrantBuilder")
+}
+
+model Grant {
+  id            String        @id @default(cuid())
+  creatorWallet String
+  builderWallet String?
+  totalAmount   Decimal
+  status        GrantStatus   @default(CREATED)
+  milestones    Milestone[]
+  transactions  Transaction[]
+  creator       User?         @relation("GrantCreator", fields: [creatorWallet], references: [walletAddress])
+  builder       User?         @relation("GrantBuilder", fields: [builderWallet], references: [walletAddress])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Milestone {
+  id                String          @id @default(cuid())
+  grantId           String
+  title             String
+  amount            Decimal
+  verificationRules Json
+  status            MilestoneStatus @default(PENDING)
+  grant             Grant           @relation(fields: [grantId], references: [id])
+  submissions       Submission[]
+}
+
+model Submission {
+  id            String   @id @default(cuid())
+  milestoneId   String
+  githubUrl     String
+  deploymentUrl String
+  aiScore       Int?
+  riskScore     Int?
+  milestone     Milestone @relation(fields: [milestoneId], references: [id])
+  createdAt     DateTime @default(now())
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  grantId   String
+  txHash    String
+  amount    Decimal
+  grant     Grant    @relation(fields: [grantId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  FUNDER
+  BUILDER
+}
+
+enum GrantStatus {
+  CREATED
+  ACCEPTED
+  FUNDED
+  RELEASED
+  REFUNDED
+}
+
+enum MilestoneStatus {
+  PENDING
+  SUBMITTED
+  VERIFIED
+  REJECTED
+  PAID
+}
