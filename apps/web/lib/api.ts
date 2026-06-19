@@ -1,4 +1,7 @@
-export const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4000";
+const browserApiBaseUrl = process.env.NEXT_PUBLIC_API_PROXY_URL ?? "/api";
+const serverApiBaseUrl = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4001";
+
+export const apiBaseUrl = typeof window === "undefined" ? serverApiBaseUrl : browserApiBaseUrl;
 
 export type Milestone = {
   id: string;

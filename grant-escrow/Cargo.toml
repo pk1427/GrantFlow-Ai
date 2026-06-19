@@ -8,6 +8,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 odra = "2.8.1"
+odra-cli = "2.8.1"
 
 [dev-dependencies]
 odra = "2.8.1"

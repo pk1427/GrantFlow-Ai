@@ -1,0 +1,6 @@
+last_updated = "2026-06-18T00:00:00Z"
+
+[[contracts]]
+name = "GrantEscrow"
+package_name = "GrantEscrow"
+package_hash = "hash-3b795847d0b0dbc46a4e4b5f402e15a445b2ca33fc082480020e05686f181c52"

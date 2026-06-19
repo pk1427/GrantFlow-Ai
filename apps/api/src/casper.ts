@@ -40,8 +40,8 @@ export async function createGrant(input: CreateGrantInput) {
 
     const deploy = await callGrantEscrow("create_grant", [
       `grant_id:u64='${grantId}'`,
-      `builder:account_hash='${stripAccountHashPrefix(input.builderWallet)}'`,
-      `amount:U512='${amountMotes}'`
+      `builder:key='${input.builderWallet}'`,
+      `amount:u512='${amountMotes}'`
     ]);
 
     return {
@@ -164,6 +164,10 @@ async function callGrantEscrow(entryPoint: string, sessionArgs: string[]) {
         `Casper on-chain mode is enabled, but "${clientPath}" is not available in this shell. Install casper-client or set CASPER_ONCHAIN_ENABLED=false for local demo mode.`
       );
     }
+    if (isExecFailure(error)) {
+      const message = [error.stderr, error.stdout, error.message].filter(Boolean).join("\n").trim();
+      throw new Error(message || "casper-client command failed");
+    }
     throw error;
   }
 
@@ -175,6 +179,10 @@ async function callGrantEscrow(entryPoint: string, sessionArgs: string[]) {
 
 function isMissingExecutableError(error: unknown) {
   return Boolean(error && typeof error === "object" && "code" in error && error.code === "ENOENT");
+}
+
+function isExecFailure(error: unknown): error is { stdout?: string; stderr?: string; message?: string } {
+  return Boolean(error && typeof error === "object" && ("stdout" in error || "stderr" in error));
 }
 
 function stripHashPrefix(hash: string) {

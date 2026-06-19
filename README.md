@@ -1,13 +1,29 @@
 # GrantFlow AI
 
-GrantFlow AI is a Casper testnet MVP for milestone-based grant funding. A funder creates a grant, locks CSPR in escrow, a builder submits evidence, AI agents verify the milestone, and the funding agent releases payment while recording a transaction hash and reputation update.
+GrantFlow AI is a Casper testnet MVP for milestone-based grant funding. A funder creates a grant, CSPR is escrowed on-chain, a builder submits evidence, verification agents inspect the work, and an authorized release wallet calls the Casper contract to release payment.
 
 ## What Is Included
 
-- `apps/web`: Next.js 15, TypeScript, Tailwind UI for the complete demo flow.
-- `apps/api`: Express API with Prisma schema, agent orchestration, and Casper service boundary.
-- `grant-escrow`: deployed Odra smart contract for the milestone escrow flow.
+- `apps/web`: Next.js 15, TypeScript, Tailwind UI for grant creation, evidence submission, reports, and release status.
+- `apps/api`: Express API with verification agents and the Casper service boundary.
+- `grant-escrow`: Odra smart contract plus a small Odra CLI wrapper used for attached-value escrow deposits.
 - `docker-compose.yml`: local PostgreSQL.
+
+## Verified Casper Testnet Deployment
+
+- Deploy hash: `758485e289bf2339f445a00012dcdcb2cc2f9641e2ff320708172dab0a39ceed`
+- Contract hash: `hash-127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f`
+- Package hash: `hash-3b795847d0b0dbc46a4e4b5f402e15a445b2ca33fc082480020e05686f181c52`
+- Authorized releaser/API wallet: `account-hash-1130715646e6847e65732ba746ecad6fce0f33ba4ac6c9f4f021674cea2ab3a5`
+- Network: `casper-test`
+
+Final end-to-end test on Casper testnet:
+
+- Grant: `grant-004` / on-chain id `4`
+- Create deploy: `58f2b21466609bc0349d7c847737e52df3ecfa8c0b51d08ab744bb9b8b9e646c`
+- Deposit deploy: `7ec1a4d50275fd4635eb230620cf92eef49ea0ec75c07b66d196a83cf65a65eb`
+- Release deploy: `3bf50064255462f3eda4dee7412d28cc41a1f4b0237e101ba410abde86a82649`
+- Final contract state: `funded=true`, `released=true`, amount `100000000000` motes.
 
 ## Local Setup
 
@@ -19,101 +35,84 @@ npm run dev:api
 npm run dev
 ```
 
-The web app runs on `http://localhost:3000`; the API defaults to `http://localhost:4000`.
+The web app runs on `http://localhost:3000`. The API is configured for `http://localhost:4001` in this repo.
 
-For Windows local demo mode, keep this in `apps/api/.env`:
+For local demo mode without Casper calls, set this in `apps/api/.env`:
 
 ```bash
 CASPER_ONCHAIN_ENABLED=false
 ```
 
-Set it to `true` only in an environment where `casper-client` and the authorized releaser secret key path are available.
+For live testnet mode, `casper-client` must be installed and `CASPER_SECRET_KEY` must point to a funded authorized releaser key file.
+
+## Environment Variables
+
+### Frontend on Vercel
+
+Set these in the Vercel project for `apps/web`:
+
+```bash
+NEXT_PUBLIC_API_URL=https://YOUR_API_HOST
+NEXT_PUBLIC_CASPER_NETWORK=casper-test
+NEXT_PUBLIC_CASPER_CONTRACT_HASH=hash-127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f
+```
+
+Vercel build settings for the web app:
+
+```text
+Root Directory: apps/web
+Build Command: npm run build
+Output Directory: .next
+Install Command: npm install
+```
+
+### API Runtime
+
+The current API uses the `casper-client` binary and a local secret key path, so deploy it to a host where you can install binaries and mount/store the key file, such as a VPS, Render, Railway, or Fly.io.
+
+```bash
+PORT=4001
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/grantflow?schema=public
+CASPER_TESTNET_RPC_URL=https://node.testnet.casper.network/rpc
+CASPER_CONTRACT_HASH=hash-127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f
+CASPER_CONTRACT_PACKAGE_HASH=hash-3b795847d0b0dbc46a4e4b5f402e15a445b2ca33fc082480020e05686f181c52
+CASPER_AUTHORIZED_RELEASER=account-hash-1130715646e6847e65732ba746ecad6fce0f33ba4ac6c9f4f021674cea2ab3a5
+CASPER_SECRET_KEY=/secure/path/api-wallet/secret_key.pem
+CASPER_CLIENT_PATH=casper-client
+CASPER_PAYMENT_AMOUNT=30000000000
+CASPER_ONCHAIN_ENABLED=true
+CASPER_ONCHAIN_TESTNET_ENABLED=true
+GITHUB_TOKEN=optional_for_higher_rate_limits
+```
+
+Do not commit real secret keys or private-key contents.
 
 ## Demo Flow
 
-1. Open the dashboard and create the "Deploy a working MVP" grant.
-2. View the locked escrow state and milestone details.
+1. Create a grant from the UI. The API calls `create_grant(grant_id, builder, amount)` on Casper.
+2. Deposit escrow funds. With the current contract, attached CSPR must be sent through Odra's proxy call, documented in `grant-escrow/README.md`.
 3. Submit a GitHub repository URL and deployment URL.
-4. Review the AI verification report with real GitHub and deployment checks.
-5. Confirm the mocked Casper release transaction and reputation update.
+4. The API verifies repository accessibility, commit count, README, recency, deployment health, and risk.
+5. Click release payment. The API calls `release_payment(grant_id)` through `casper-client`.
+6. Confirm the deploy hash on CSPR.live and check the report/dashboard.
 
-## AI Verification Agent
+## Casper Client vs SDK
 
-The backend verification agent checks:
+For the hackathon demo, keep the current `casper-client` path because it is already deployed and proven end-to-end on testnet.
 
-- GitHub repository accessibility.
-- Commit count of at least 10 commits.
-- README existence.
-- Latest commit within the last 14 days.
-- Deployment URL health via HTTP response.
+For a Vercel-hosted API or production architecture, migrate Casper calls to the Casper SDK. Vercel serverless functions are a poor fit for shelling out to `casper-client` and reading a PEM file from disk. The SDK should sign from a secret stored in the platform's secret manager and submit deploys directly over RPC.
 
-Set `GITHUB_TOKEN` in `apps/api/.env` if you need higher GitHub API rate limits during repeated demos.
+Recommended sequence:
 
-## Full Local Workflow Test
-
-Run the API first:
-
-```bash
-npm run dev:api
-```
-
-Run the frontend in a second terminal:
-
-```bash
-npm run dev
-```
-
-Then test:
-
-1. Open `http://localhost:3000`.
-2. Click **Connect Wallet**. If the Casper extension is not installed, the UI shows `Wallet missing`; the flow still works in local demo mode.
-3. Open `http://localhost:3000/dashboard` and confirm indexed backend stats load.
-4. Open `http://localhost:3000/grants/new`.
-5. Create a grant. With `CASPER_ONCHAIN_ENABLED=false`, the API returns a deterministic `local-demo` transaction instead of calling `casper-client`.
-6. Open the created grant details page.
-7. Click **Submit evidence** and run verification.
-8. Open the generated report.
-9. Return to the grant details page and click **Release payment**.
-10. Confirm the dashboard transaction history and report page show the release hash.
-
-## Casper Testnet Deployment
-
-- Deploy Hash:
-  `758485e289bf2339f445a00012dcdcb2cc2f9641e2ff320708172dab0a39ceed`
-
-- Contract Hash:
-  `hash-127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f`
-
-- Package Hash:
-  `hash-3b795847d0b0dbc46a4e4b5f402e15a445b2ca33fc082480020e05686f181c52`
-
-- Authorized Releaser:
-  `account-hash-1130715646e6847e65732ba746ecad6fce0f33ba4ac6c9f4f021674cea2ab3a5`
-
-- Network:
-  Casper Testnet
-
-## Casper Integration Notes
-
-`apps/api/src/casper.ts` calls the deployed `GrantEscrow` contract through `casper-client` when `CASPER_CONTRACT_HASH` and `CASPER_SECRET_KEY` are configured. If those values are absent, the API returns deterministic local-demo hashes so the UI remains runnable without a funded signing wallet.
-
-Integrated entry points:
-
-- `POST /grants` -> `create_grant(grant_id, builder, amount)`
-- `POST /payments/release` -> `release_payment(grant_id)`
-
-Direct contract calls should target:
-
-```text
-hash-127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f
-```
-
-Do not commit `apps/api/.env`; it contains the authorized releaser secret key path.
-
-For real `create_grant` calls, pass the builder as a Casper `account-hash-*` value.
+1. Ship the demo with current client flow.
+2. Deploy web on Vercel and API on a binary-capable host.
+3. After judging/demo, replace `apps/api/src/casper.ts` internals with SDK calls while keeping the same API routes.
 
 ## API Endpoints
 
+- `GET /health`
+- `GET /config`
+- `GET /indexer/state`
 - `POST /grants`
 - `POST /grants/:id/accept`
 - `POST /milestones/:id/submit`

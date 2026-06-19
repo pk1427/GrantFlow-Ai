@@ -17,54 +17,39 @@ Entry points:
 - `release_payment(grant_id: u64)`
 - `get_grant(grant_id: u64) -> Grant`
 
-## Install Dependencies
+## Verified Testnet Contract
+
+- Contract hash: `hash-127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f`
+- Package hash: `hash-3b795847d0b0dbc46a4e4b5f402e15a445b2ca33fc082480020e05686f181c52`
+- Authorized releaser: `account-hash-1130715646e6847e65732ba746ecad6fce0f33ba4ac6c9f4f021674cea2ab3a5`
+
+End-to-end proof on testnet:
+
+- Create grant id 4: `58f2b21466609bc0349d7c847737e52df3ecfa8c0b51d08ab744bb9b8b9e646c`
+- Deposit 100 CSPR: `7ec1a4d50275fd4635eb230620cf92eef49ea0ec75c07b66d196a83cf65a65eb`
+- Release 100 CSPR: `3bf50064255462f3eda4dee7412d28cc41a1f4b0237e101ba410abde86a82649`
+
+## Build and Test
 
 ```bash
 rustup target add wasm32-unknown-unknown
-cargo install odra-cli
-```
-
-## Run Tests
-
-```bash
 cargo test
-```
-
-## Build Contract
-
-```bash
 cargo build --release --target wasm32-unknown-unknown
 ```
 
-Expected output:
+Expected WASM:
 
 ```text
 target/wasm32-unknown-unknown/release/grant_escrow.wasm
 ```
 
-## Casper Testnet Deployment
-
-Set deployment values:
+## Raw Contract Deployment
 
 ```bash
-export CASPER_TESTNET_RPC_URL="https://node.testnet.casper.network/rpc"
-export CASPER_SECRET_KEY="$HOME/.casper/keys/grantflow/secret_key.pem"
-export CASPER_AUTHORIZED_RELEASER="account-hash-REPLACE_WITH_EXPRESS_API_WALLET"
-```
+export CASPER_TESTNET_RPC_URL=https://node.testnet.casper.network/rpc
+export CASPER_SECRET_KEY=$HOME/.casper/testnet/secret_key.pem
+export CASPER_AUTHORIZED_RELEASER=account-hash-REPLACE_WITH_API_WALLET
 
-Fund the deployer wallet with testnet CSPR:
-
-```bash
-casper-client get-account-info \
-  --node-address "$CASPER_TESTNET_RPC_URL" \
-  --public-key "$(casper-client keygen-public-key "$CASPER_SECRET_KEY")"
-```
-
-If the account is missing or underfunded, use the Casper testnet faucet for the public key produced above.
-
-Deploy the WASM contract:
-
-```bash
 casper-client put-deploy \
   --node-address "$CASPER_TESTNET_RPC_URL" \
   --secret-key "$CASPER_SECRET_KEY" \
@@ -74,62 +59,73 @@ casper-client put-deploy \
   --session-arg "authorized_releaser:account_hash='$CASPER_AUTHORIZED_RELEASER'"
 ```
 
-Fetch the deploy and save the installed contract hash from the deploy effects:
+Fetch the deploy and save the installed contract hash/package hash from the effects.
+
+## Calling the Existing Deployment
+
+A small Odra CLI wrapper is included at `src/bin/cli.rs`. It is needed for `deposit_funds` because the contract uses Odra attached value. Plain `casper-client put-deploy --session-hash deposit_funds` does not correctly attach Odra value.
+
+Set Odra livenet env vars:
 
 ```bash
-casper-client get-deploy \
-  --node-address "$CASPER_TESTNET_RPC_URL" \
-  DEPLOY_HASH_FROM_PUT_DEPLOY
-
-export CASPER_CONTRACT_HASH="hash-REPLACE_WITH_INSTALLED_CONTRACT_HASH"
+export ODRA_CASPER_LIVENET_NODE_ADDRESS=https://node.testnet.casper.network/rpc
+export ODRA_CASPER_LIVENET_EVENTS_URL=https://node.testnet.casper.network/events
+export ODRA_CASPER_LIVENET_CHAIN_NAME=casper-test
+export ODRA_CASPER_LIVENET_SECRET_KEY_PATH=$HOME/.casper/api-wallet/secret_key.pem
 ```
 
-Export these values into `D:\Hackathons\C-hackathon\apps\api\.env`:
+The deployed package is already recorded in `resources/deployed_contracts.toml`.
+
+Create grant through raw `casper-client`:
 
 ```bash
-CASPER_CONTRACT_HASH=hash-REPLACE_WITH_INSTALLED_CONTRACT_HASH
-CASPER_AUTHORIZED_RELEASER=account-hash-REPLACE_WITH_EXPRESS_API_WALLET
-CASPER_SECRET_KEY=/home/prasad_kapure/.casper/keys/grantflow/secret_key.pem
+casper-client put-deploy \
+  --node-address https://node.testnet.casper.network/rpc \
+  --secret-key "$ODRA_CASPER_LIVENET_SECRET_KEY_PATH" \
+  --chain-name casper-test \
+  --payment-amount 30000000000 \
+  --session-hash 127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f \
+  --session-entry-point create_grant \
+  --session-arg "grant_id:u64='4'" \
+  --session-arg "builder:key='account-hash-1130715646e6847e65732ba746ecad6fce0f33ba4ac6c9f4f021674cea2ab3a5'" \
+  --session-arg "amount:u512='100000000000'"
 ```
 
-## Backend Integration Notes
+Deposit funds through the Odra proxy wrapper:
 
-The backend file `apps/api/src/casper.ts` should call the deployed contract hash with Casper client tooling or SDK equivalents.
-
-Create a grant:
-
-```ts
-await callContract({
-  contractHash: process.env.CASPER_CONTRACT_HASH!,
-  entryPoint: "create_grant",
-  args: {
-    grant_id: grantId,
-    builder: builderAccountHash,
-    amount: amountMotes,
-  },
-});
+```bash
+cargo run --bin cli -- \
+  --contracts-toml resources/deployed_contracts.toml \
+  contract GrantEscrow deposit_funds \
+  --grant_id 4 \
+  --attached_value '100 cspr' \
+  --gas '30 cspr'
 ```
 
-Deposit funds from the funder wallet:
+Release payment through raw `casper-client` or the API:
 
-```ts
-await callContract({
-  contractHash: process.env.CASPER_CONTRACT_HASH!,
-  entryPoint: "deposit_funds",
-  args: { grant_id: grantId },
-  attachedValue: amountMotes,
-});
+```bash
+casper-client put-deploy \
+  --node-address https://node.testnet.casper.network/rpc \
+  --secret-key "$ODRA_CASPER_LIVENET_SECRET_KEY_PATH" \
+  --chain-name casper-test \
+  --payment-amount 30000000000 \
+  --session-hash 127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f \
+  --session-entry-point release_payment \
+  --session-arg "grant_id:u64='4'"
 ```
 
-Release payment after AI verification:
+Query grant state:
 
-```ts
-await callContract({
-  contractHash: process.env.CASPER_CONTRACT_HASH!,
-  entryPoint: "release_payment",
-  args: { grant_id: grantId },
-  secretKey: process.env.CASPER_SECRET_KEY!,
-});
+```bash
+cargo run --bin cli -- \
+  --contracts-toml resources/deployed_contracts.toml \
+  contract GrantEscrow get_grant \
+  --grant_id 4
 ```
 
-`release_payment` must be signed by the `CASPER_AUTHORIZED_RELEASER` wallet configured at initialization.
+Expected final state after a complete flow: `funded=true`, `released=true`.
+
+## Backend Notes
+
+The current Express API uses `casper-client` for `create_grant` and `release_payment`. For Vercel serverless or production, migrate those internals to the Casper SDK so signing and deploy submission do not depend on a local binary or filesystem key path.
