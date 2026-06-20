@@ -78,6 +78,8 @@ CASPER_CONTRACT_HASH=hash-127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91
 CASPER_CONTRACT_PACKAGE_HASH=hash-3b795847d0b0dbc46a4e4b5f402e15a445b2ca33fc082480020e05686f181c52
 CASPER_AUTHORIZED_RELEASER=account-hash-1130715646e6847e65732ba746ecad6fce0f33ba4ac6c9f4f021674cea2ab3a5
 CASPER_SECRET_KEY=/secure/path/api-wallet/secret_key.pem
+# Railway alternative: set CASPER_SECRET_KEY_PEM_BASE64 instead of CASPER_SECRET_KEY.
+CASPER_SECRET_KEY_PEM_BASE64=base64_encoded_secret_key_pem
 CASPER_CLIENT_PATH=casper-client
 CASPER_PAYMENT_AMOUNT=30000000000
 CASPER_ONCHAIN_ENABLED=true
@@ -86,6 +88,40 @@ GITHUB_TOKEN=optional_for_higher_rate_limits
 ```
 
 Do not commit real secret keys or private-key contents.
+
+## Railway Backend Deployment
+
+This repo includes a root `Dockerfile` and `railway.json` for deploying only the Express API. The Docker image installs `casper-client`, builds `apps/api`, and starts `npm run start --workspace @grantflow/api`.
+
+Required Railway variables:
+
+```bash
+PORT=4001
+CASPER_TESTNET_RPC_URL=https://node.testnet.casper.network/rpc
+CASPER_CONTRACT_HASH=hash-127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f
+CASPER_CONTRACT_PACKAGE_HASH=hash-3b795847d0b0dbc46a4e4b5f402e15a445b2ca33fc082480020e05686f181c52
+CASPER_AUTHORIZED_RELEASER=account-hash-1130715646e6847e65732ba746ecad6fce0f33ba4ac6c9f4f021674cea2ab3a5
+CASPER_SECRET_KEY_PEM_BASE64=base64_encoded_api_wallet_secret_key_pem
+CASPER_CLIENT_PATH=casper-client
+CASPER_PAYMENT_AMOUNT=30000000000
+CASPER_ONCHAIN_ENABLED=true
+CASPER_ONCHAIN_TESTNET_ENABLED=true
+```
+
+Create the base64 secret from WSL:
+
+```bash
+base64 -w 0 ~/.casper/api-wallet/secret_key.pem
+```
+
+After Railway deploys, test:
+
+```bash
+curl https://YOUR_RAILWAY_DOMAIN/health
+curl https://YOUR_RAILWAY_DOMAIN/config
+```
+
+Use the Railway domain as `NEXT_PUBLIC_API_URL` when deploying the frontend on Vercel.
 
 ## Demo Flow
 

@@ -1,5 +1,8 @@
 import crypto from "node:crypto";
 import { execFile } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -117,16 +120,38 @@ function csprToMotes(amount: number) {
   return BigInt(Math.round(amount * 1_000_000_000)).toString();
 }
 
+function getCasperSecretKeyPath() {
+  if (process.env.CASPER_SECRET_KEY) {
+    return process.env.CASPER_SECRET_KEY;
+  }
+
+  const encodedPem = process.env.CASPER_SECRET_KEY_PEM_BASE64;
+  const rawPem = process.env.CASPER_SECRET_KEY_PEM;
+  if (!encodedPem && !rawPem) {
+    return undefined;
+  }
+
+  const pem = encodedPem ? Buffer.from(encodedPem, "base64").toString("utf8") : rawPem!.replace(/\\n/g, "\n");
+  const keyPath = path.join(os.tmpdir(), "grantflow-casper-secret-key.pem");
+
+  if (!fs.existsSync(keyPath) || fs.readFileSync(keyPath, "utf8") !== pem) {
+    fs.writeFileSync(keyPath, pem, { mode: 0o600 });
+    fs.chmodSync(keyPath, 0o600);
+  }
+
+  return keyPath;
+}
+
 function isOnchainEnabled() {
   return (
     process.env.CASPER_ONCHAIN_ENABLED === "true" &&
-    Boolean(process.env.CASPER_CONTRACT_HASH && process.env.CASPER_SECRET_KEY)
+    Boolean(process.env.CASPER_CONTRACT_HASH && getCasperSecretKeyPath())
   );
 }
 
 async function callGrantEscrow(entryPoint: string, sessionArgs: string[]) {
   const contractHash = process.env.CASPER_CONTRACT_HASH;
-  const secretKey = process.env.CASPER_SECRET_KEY;
+  const secretKey = getCasperSecretKeyPath();
   const nodeAddress = process.env.CASPER_TESTNET_RPC_URL ?? "https://node.testnet.casper.network/rpc";
   const clientPath = process.env.CASPER_CLIENT_PATH ?? "casper-client";
 
