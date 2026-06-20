@@ -1,7 +1,7 @@
-import { Bot, CheckCircle2, ExternalLink } from "lucide-react";
+import { Bot, CheckCircle2, ExternalLink, ShieldCheck, WalletCards } from "lucide-react";
 import { ApiOffline } from "@/components/api-offline";
 import { GrantLifecycle } from "@/components/grant-lifecycle";
-import { Badge, Card, LinkButton } from "@/components/ui";
+import { Badge, Card, LinkButton, PageShell, ProgressRing, SectionHeader } from "@/components/ui";
 import { ReleasePaymentButton } from "@/components/release-payment-button";
 import { explorerDeployUrl, formatStatus, isMockHash, shortHash, apiFetch, type Grant, type IndexerState } from "@/lib/api";
 
@@ -26,39 +26,59 @@ export default async function GrantDetailsPage({ params }: { params: Promise<{ i
   const canRelease = Boolean(submission && grant.builder_wallet && milestone.status === "VERIFIED" && !release);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <Badge tone={grant.status === "RELEASED" ? "success" : "default"}>{formatStatus(grant.status)}</Badge>
-          <h1 className="mt-3 text-3xl font-bold tracking-normal">{milestone.title}</h1>
-          <p className="mt-2 break-all text-slate-300">Funder {grant.creator_wallet} · Builder {grant.builder_wallet ?? "Unassigned"}</p>
-        </div>
-        {canSubmit ? <LinkButton href={`/grants/${grant.id}/submit`}>Submit evidence</LinkButton> : null}
-      </div>
+    <PageShell className="max-w-6xl">
+      <SectionHeader
+        eyebrow="Grant details"
+        title={milestone.title}
+        action={canSubmit ? <LinkButton href={`/grants/${grant.id}/submit`}>Submit evidence</LinkButton> : null}
+      >
+        Funder <span className="break-all text-slate-300">{grant.creator_wallet}</span> · Builder{" "}
+        <span className="break-all text-slate-300">{grant.builder_wallet ?? "Unassigned"}</span>
+      </SectionHeader>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.8fr]">
-        <Card>
-          <h2 className="text-xl font-semibold">Milestone criteria</h2>
+        <Card className="p-6">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">Milestone criteria</h2>
+            <Badge tone={grant.status === "RELEASED" ? "success" : "default"}>{formatStatus(grant.status)}</Badge>
+          </div>
           <ul className="mt-4 space-y-3">
             {milestone.verification_rules.map((rule) => (
-              <li key={rule} className="flex gap-3 text-sm text-slate-300">
-                <CheckCircle2 className="mt-0.5 shrink-0 text-success" size={17} />
-                {rule}
+              <li key={rule} className="flex gap-3 rounded-md border border-line bg-ink/45 p-3 text-sm text-slate-300">
+                <CheckCircle2 className="mt-0.5 shrink-0 text-success" size={17} aria-hidden />
+                <span>{rule}</span>
               </li>
             ))}
           </ul>
         </Card>
-        <Card>
-          <Bot className="text-cyan" size={30} />
-          <h2 className="mt-4 text-xl font-semibold">AI verification</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-300">
-            Confidence {submission?.ai_score ?? 0}%, risk {submission?.risk_score ?? 0}/100, status {formatStatus(milestone.status)}.
-          </p>
+        <Card className="p-6">
+          <div className="flex items-start gap-4">
+            <div className="rounded-lg border border-cyan/30 bg-cyan/10 p-3 text-cyan">
+              <Bot size={26} />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold">AI verification</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                Confidence {submission?.ai_score ?? 0}%, risk {submission?.risk_score ?? 0}/100, status {formatStatus(milestone.status)}.
+              </p>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-md border border-line bg-ink/50 p-4">
+              <ProgressRing value={submission?.ai_score ?? 0} label="AI confidence" tone="cyan" />
+            </div>
+            <div className="rounded-md border border-line bg-ink/50 p-4">
+              <ProgressRing value={100 - (submission?.risk_score ?? 0)} label="Trust score" tone={submission && submission.risk_score < 30 ? "success" : "warn"} />
+            </div>
+          </div>
           <LinkButton href={`/reports/${milestone.id}`} className="mt-5">
             View report <ExternalLink size={16} />
           </LinkButton>
           {release ? (
             <div className="mt-5 rounded-md border border-success/40 bg-success/10 p-4">
-              <p className="text-sm font-medium text-success">Payment released</p>
+              <div className="flex items-center gap-2 text-sm font-medium text-success">
+                <WalletCards size={17} />
+                Payment released
+              </div>
               {explorerDeployUrl(release.tx_hash) ? (
                 <a className="mt-2 block break-all text-xs text-cyan" href={explorerDeployUrl(release.tx_hash)} target="_blank" rel="noreferrer">
                   View deploy {shortHash(release.tx_hash)}
@@ -78,11 +98,16 @@ export default async function GrantDetailsPage({ params }: { params: Promise<{ i
               builderWallet={grant.builder_wallet}
             />
           ) : null}
+          {!submission ? (
+            <div className="mt-5 rounded-md border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100">
+              Submit evidence before the funding agent can authorize payment.
+            </div>
+          ) : null}
         </Card>
       </div>
       <div className="mt-6">
         <GrantLifecycle grant={grant} submission={submission} release={release} />
       </div>
-    </div>
+    </PageShell>
   );
 }

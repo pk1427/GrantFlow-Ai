@@ -37,17 +37,20 @@ export function GrantLifecycle({
           {formatStatus(milestone?.status ?? grant?.status)}
         </Badge>
       </div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-4">
+      <div className="mt-6 grid gap-3 md:grid-cols-4">
         {steps.map((step) => {
           const done = active[step.key as keyof typeof active];
           const Icon = step.icon;
           return (
-            <div key={step.key} className="rounded-md border border-line bg-ink/50 p-4">
+            <div key={step.key} className="relative flex gap-4 rounded-md border border-line bg-ink/50 p-4 md:block">
               <div className={done ? "text-success" : "text-slate-500"}>
-                {done ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                {done ? <CheckCircle2 size={22} /> : <Circle size={22} />}
               </div>
-              <Icon className="mt-4 text-cyan" size={18} />
-              <p className="mt-3 text-sm font-medium">{step.label}</p>
+              <div>
+                <Icon className="text-cyan md:mt-4" size={18} />
+                <p className="mt-2 text-sm font-medium md:mt-3">{step.label}</p>
+                <p className="mt-1 text-xs text-slate-500">{done ? "Complete" : "Pending"}</p>
+              </div>
             </div>
           );
         })}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Coins, Plus } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Button, Field, TextArea } from "@/components/ui";
 import { apiFetch, shortHash, type AppConfig, type Grant } from "@/lib/api";
 
 const defaultBuilder = "account-hash-1130715646e6847e65732ba746ecad6fce0f33ba4ac6c9f4f021674cea2ab3a5";
@@ -47,7 +47,7 @@ export function CreateGrantForm() {
     <form action={submit} className="grid gap-5">
       <label className="grid gap-2">
         <span className="text-sm text-slate-300">Grant title</span>
-        <input name="title" className="rounded-md border border-line bg-ink px-3 py-2" defaultValue="Deploy a working MVP" />
+        <Field name="title" defaultValue="Deploy a working MVP" required />
       </label>
       {config ? (
         <div className="rounded-md border border-line bg-ink/70 p-4 text-sm text-slate-300">
@@ -62,22 +62,23 @@ export function CreateGrantForm() {
       ) : null}
       <label className="grid gap-2">
         <span className="text-sm text-slate-300">Builder account hash</span>
-        <input name="builder_wallet" className="rounded-md border border-line bg-ink px-3 py-2" defaultValue={defaultBuilder} />
+        <Field name="builder_wallet" defaultValue={defaultBuilder} required />
+        <span className="text-xs text-slate-500">Casper account hash that receives payment after verification.</span>
       </label>
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="grid gap-2">
           <span className="text-sm text-slate-300">Reward in CSPR</span>
-          <input name="total_amount" type="number" min="1" className="rounded-md border border-line bg-ink px-3 py-2" defaultValue="100" />
+          <Field name="total_amount" type="number" min="1" defaultValue="100" required />
         </label>
         <label className="grid gap-2">
           <span className="text-sm text-slate-300">Network</span>
-          <input className="rounded-md border border-line bg-ink px-3 py-2" value="Casper Testnet" readOnly />
+          <Field value="Casper Testnet" readOnly />
         </label>
       </div>
       <label className="grid gap-2">
         <span className="text-sm text-slate-300">Verification rules</span>
-        <textarea
-          className="min-h-32 rounded-md border border-line bg-ink px-3 py-2"
+        <TextArea
+          className="min-h-32"
           defaultValue={"Public GitHub repository exists\nRepository has at least 10 commits\nREADME file exists\nDeployment URL returns HTTP 200\nLatest commit is within the last 14 days"}
         />
       </label>

@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { Activity, ArrowUpRight, Gauge, Trophy } from "lucide-react";
+import { Activity, ArrowUpRight, BadgeCheck, Coins, Database, Gauge, ShieldCheck, Trophy, WalletCards } from "lucide-react";
 import { ApiOffline } from "@/components/api-offline";
 import { GrantLifecycle } from "@/components/grant-lifecycle";
-import { Badge, Card, LinkButton } from "@/components/ui";
+import { Badge, Card, LinkButton, PageShell, SectionHeader } from "@/components/ui";
 import { apiFetch, explorerDeployUrl, formatStatus, isMockHash, shortHash, type IndexerState } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -23,39 +23,43 @@ export default async function DashboardPage() {
     ? state.transactions.find((item) => item.milestone_id === latestMilestone.id && item.label === "Milestone release")
     : undefined;
   const stats = [
-    { label: "Total grants", value: String(state.stats.total_grants) },
-    { label: "Funds locked", value: `${state.stats.funds_locked} CSPR` },
-    { label: "Funds released", value: `${state.stats.funds_released} CSPR` },
-    { label: "AI score", value: `${state.stats.ai_score}%` },
-    { label: "Reputation", value: String(state.stats.reputation_score) }
+    { label: "Total grants", value: String(state.stats.total_grants), icon: Database, tone: "text-cyan" },
+    { label: "Funds locked", value: `${state.stats.funds_locked} CSPR`, icon: WalletCards, tone: "text-amber-200" },
+    { label: "Funds released", value: `${state.stats.funds_released} CSPR`, icon: Coins, tone: "text-success" },
+    { label: "AI score", value: `${state.stats.ai_score}%`, icon: ShieldCheck, tone: "text-cyan" },
+    { label: "Reputation", value: String(state.stats.reputation_score), icon: BadgeCheck, tone: "text-success" }
   ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-sm text-cyan">Funder dashboard</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-normal">Milestone funding console</h1>
-        </div>
-        <LinkButton href="/grants/new">New grant</LinkButton>
-      </div>
+    <PageShell>
+      <SectionHeader eyebrow="Funder dashboard" title="Milestone funding console" action={<LinkButton href="/grants/new">New grant</LinkButton>}>
+        Monitor AI-verified milestones, backend-indexed transactions, and Casper payment release state from one operational view.
+      </SectionHeader>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {stats.map((stat) => (
-          <Card key={stat.label}>
-            <p className="text-sm text-slate-400">{stat.label}</p>
-            <p className="mt-2 text-2xl font-semibold">{stat.value}</p>
+          <Card key={stat.label} className="group">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-slate-400">{stat.label}</p>
+              <stat.icon className={stat.tone} size={18} />
+            </div>
+            <p className="mt-3 text-2xl font-semibold tabular-nums">{stat.value}</p>
+            <div className="mt-4 h-1 rounded-full bg-line">
+              <div className="h-1 rounded-full bg-cyan/80 transition-all group-hover:bg-cyan" style={{ width: stat.label === "AI score" ? `${state.stats.ai_score}%` : "72%" }} />
+            </div>
           </Card>
         ))}
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <Card>
+        <Card className="p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <Badge tone={latestGrant?.status === "RELEASED" ? "success" : "default"}>{formatStatus(latestGrant?.status ?? "No grants")}</Badge>
               <h2 className="mt-4 text-2xl font-semibold">{latestMilestone?.title ?? "Create your first grant"}</h2>
               <p className="mt-2 text-sm text-slate-300">Escrowed milestone reward: {latestGrant?.total_amount ?? 0} CSPR</p>
             </div>
-            <Gauge className="text-cyan" size={32} />
+            <div className="rounded-lg border border-cyan/30 bg-cyan/10 p-3 text-cyan">
+              <Gauge size={28} />
+            </div>
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <Metric icon={<Activity size={18} />} label="AI confidence" value={`${state.stats.ai_score}%`} />
@@ -64,11 +68,14 @@ export default async function DashboardPage() {
           </div>
           <LinkButton href={latestGrant ? `/grants/${latestGrant.id}` : "/grants/new"} className="mt-6">Open grant</LinkButton>
         </Card>
-        <Card>
-          <h2 className="text-xl font-semibold">Transaction history</h2>
+        <Card className="p-6">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">Transaction history</h2>
+            <Badge>{state.transactions.length} indexed</Badge>
+          </div>
           <div className="mt-4 space-y-4">
             {state.transactions.map((tx) => (
-              <div key={tx.id} className="border-b border-line pb-4 last:border-0 last:pb-0">
+              <div key={tx.id} className="rounded-md border border-line bg-ink/45 p-4 transition hover:border-slate-600">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-medium">{tx.label}</p>
                   <Badge tone="success">{formatStatus(tx.status)}</Badge>
@@ -93,7 +100,13 @@ export default async function DashboardPage() {
         <GrantLifecycle grant={latestGrant} submission={latestSubmission} release={latestRelease} />
       </div>
       <Card className="mt-6">
-        <h2 className="text-xl font-semibold">Indexed grants</h2>
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-xl font-semibold">Indexed grants</h2>
+            <p className="mt-1 text-sm text-slate-400">Application state is read from the backend indexer, not directly from the browser.</p>
+          </div>
+          <Badge>{state.source}</Badge>
+        </div>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[680px] border-collapse text-left text-sm">
             <thead className="text-slate-400">
@@ -124,7 +137,7 @@ export default async function DashboardPage() {
           </table>
         </div>
       </Card>
-    </div>
+    </PageShell>
   );
 }
 
@@ -133,7 +146,7 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
     <div className="rounded-md border border-line bg-ink/50 p-4">
       <div className="mb-3 text-cyan">{icon}</div>
       <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-1 text-xl font-semibold">{value}</p>
+      <p className="mt-1 truncate text-lg font-semibold">{value}</p>
     </div>
   );
 }

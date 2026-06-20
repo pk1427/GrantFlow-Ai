@@ -2,6 +2,12 @@
 
 GrantFlow AI is a Casper testnet MVP for milestone-based grant funding. A funder creates a grant, CSPR is escrowed on-chain, a builder submits evidence, verification agents inspect the work, and an authorized release wallet calls the Casper contract to release payment.
 
+## Live Demo
+
+- Frontend: `https://grant-flow-ai-web.vercel.app`
+- Backend: `https://grantflow-ai-vtqb.onrender.com`
+- Health check: `https://grantflow-ai-vtqb.onrender.com/health`
+
 ## What Is Included
 
 - `apps/web`: Next.js 15, TypeScript, Tailwind UI for grant creation, evidence submission, reports, and release status.

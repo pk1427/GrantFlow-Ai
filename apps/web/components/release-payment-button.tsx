@@ -49,7 +49,8 @@ export function ReleasePaymentButton({
       <Button onClick={release} disabled={pending || Boolean(tx)} type="button">
         <WalletCards size={16} /> {pending ? "Submitting release" : tx ? "Release submitted" : "Release payment"}
       </Button>
-      {tx ? <p className="break-all text-xs text-cyan">{tx.tx_hash}</p> : null}
+      {pending ? <p className="text-xs text-slate-400">Funding agent is submitting the release transaction.</p> : null}
+      {tx ? <p className="break-all rounded-md border border-line bg-ink/50 p-3 text-xs text-cyan">{tx.tx_hash}</p> : null}
       {error ? <p className="rounded-md border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-200">{error}</p> : null}
     </div>
   );

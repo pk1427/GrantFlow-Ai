@@ -10,9 +10,14 @@ body {
   margin: 0;
   background: #070a12;
   color: #f8fafc;
+  text-rendering: optimizeLegibility;
 }
 
 input,
 textarea {
   color-scheme: dark;
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.28);
 }

@@ -1,7 +1,6 @@
-import type { ReactNode } from "react";
-import { CheckCircle2, Circle, ShieldAlert, WalletCards } from "lucide-react";
+import { CheckCircle2, Circle, WalletCards } from "lucide-react";
 import { ApiOffline } from "@/components/api-offline";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Card, PageShell, ProgressRing, SectionHeader } from "@/components/ui";
 import { explorerDeployUrl, apiFetch, isMockHash, shortHash, type IndexerState } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -20,15 +19,20 @@ export default async function VerificationReportPage({ params }: { params: Promi
   const status = release ? "Release submitted" : submission ? "Verified, awaiting release" : "No submission";
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <Badge tone={release ? "success" : submission ? "default" : "warn"}>{status}</Badge>
-      <h1 className="mt-3 text-3xl font-bold tracking-normal">AI verification report</h1>
+    <PageShell className="max-w-6xl">
+      <SectionHeader eyebrow="Agent report" title="AI verification report" action={<Badge tone={release ? "success" : submission ? "default" : "warn"}>{status}</Badge>}>
+        Evidence analysis, risk signals, and payment release state for this milestone.
+      </SectionHeader>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.85fr]">
-        <Card>
+        <Card className="p-6">
           <h2 className="text-xl font-semibold">Verification result</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <Score label="Confidence" value={`${submission?.ai_score ?? 0}%`} icon={<CheckCircle2 />} />
-            <Score label="Risk score" value={`${submission?.risk_score ?? 0}/100`} icon={<ShieldAlert />} />
+            <div className="rounded-md border border-line bg-ink/50 p-4">
+              <ProgressRing value={submission?.ai_score ?? 0} label="Confidence" tone="cyan" />
+            </div>
+            <div className="rounded-md border border-line bg-ink/50 p-4">
+              <ProgressRing value={100 - (submission?.risk_score ?? 0)} label="Risk-adjusted trust" tone={submission && submission.risk_score < 30 ? "success" : "warn"} />
+            </div>
           </div>
           {submission ? (
             <div className="mt-5 rounded-md border border-line bg-ink/60 p-4">
@@ -59,7 +63,7 @@ export default async function VerificationReportPage({ params }: { params: Promi
             ))}
           </ul>
         </Card>
-        <Card>
+        <Card className="p-6">
           <WalletCards className="text-cyan" size={30} />
           <h2 className="mt-4 text-xl font-semibold">Casper release</h2>
           <p className="mt-2 text-sm text-slate-300">
@@ -87,17 +91,7 @@ export default async function VerificationReportPage({ params }: { params: Promi
           </div>
         </Card>
       </div>
-    </div>
-  );
-}
-
-function Score({ label, value, icon }: { label: string; value: string; icon: ReactNode }) {
-  return (
-    <div className="rounded-md border border-line bg-ink/60 p-4">
-      <div className="mb-3 text-cyan">{icon}</div>
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-1 text-3xl font-semibold">{value}</p>
-    </div>
+    </PageShell>
   );
 }
 

@@ -66,7 +66,7 @@ export function WalletButton() {
     <button
       onClick={connect}
       title={status === "missing" ? "Install Casper Wallet or Casper Signer" : publicKey ?? "Connect Casper Wallet"}
-      className="inline-flex h-9 max-w-[13rem] items-center gap-2 rounded-md border border-cyan/50 px-3 text-sm text-cyan"
+      className="inline-flex h-9 max-w-[12rem] items-center gap-2 rounded-md border border-cyan/45 bg-cyan/10 px-3 text-sm text-cyan transition hover:border-cyan hover:bg-cyan/15 focus:outline-none focus:ring-2 focus:ring-cyan/30"
     >
       <Wallet size={16} />
       <span className="truncate">
