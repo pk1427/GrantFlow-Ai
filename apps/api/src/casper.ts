@@ -4,6 +4,23 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import CasperSdk from "casper-js-sdk";
+import type { CLValue as CasperCLValue, Hash as CasperHash } from "casper-js-sdk";
+
+const {
+  Args,
+  CLValue,
+  ContractHash,
+  Deploy,
+  DeployHeader,
+  ExecutableDeployItem,
+  HttpHandler,
+  Key,
+  KeyAlgorithm,
+  PrivateKey,
+  RpcClient,
+  StoredContractByHash
+} = CasperSdk;
 
 const execFileAsync = promisify(execFile);
 
@@ -27,6 +44,7 @@ export function getCasperRuntimeConfig() {
     contractHash: process.env.CASPER_CONTRACT_HASH,
     contractPackageHash: process.env.CASPER_CONTRACT_PACKAGE_HASH,
     authorizedReleaser: process.env.CASPER_AUTHORIZED_RELEASER,
+    callMode: getCasperCallMode(),
     clientPath: process.env.CASPER_CLIENT_PATH ?? "casper-client"
   };
 }
@@ -42,9 +60,9 @@ export async function createGrant(input: CreateGrantInput) {
     }
 
     const deploy = await callGrantEscrow("create_grant", [
-      `grant_id:u64='${grantId}'`,
-      `builder:key='${input.builderWallet}'`,
-      `amount:u512='${amountMotes}'`
+      casperArg("grant_id", `grant_id:u64='${grantId}'`, CLValue.newCLUint64(grantId)),
+      casperArg("builder", `builder:key='${input.builderWallet}'`, newAccountHashKey(input.builderWallet)),
+      casperArg("amount", `amount:u512='${amountMotes}'`, CLValue.newCLUInt512(amountMotes))
     ]);
 
     return {
@@ -77,7 +95,9 @@ export async function releasePayment(input: ReleasePaymentInput) {
   const grantId = toContractGrantId(input.grantId);
 
   if (configured) {
-    const release = await callGrantEscrow("release_payment", [`grant_id:u64='${grantId}'`]);
+    const release = await callGrantEscrow("release_payment", [
+      casperArg("grant_id", `grant_id:u64='${grantId}'`, CLValue.newCLUint64(grantId))
+    ]);
 
     return {
       network: "casper-test",
@@ -142,14 +162,90 @@ function getCasperSecretKeyPath() {
   return keyPath;
 }
 
+function getCasperSecretKeyPem() {
+  const encodedPem = process.env.CASPER_SECRET_KEY_PEM_BASE64;
+  const rawPem = process.env.CASPER_SECRET_KEY_PEM;
+
+  if (encodedPem) {
+    return Buffer.from(encodedPem, "base64").toString("utf8");
+  }
+
+  if (rawPem) {
+    return rawPem.replace(/\\n/g, "\n");
+  }
+
+  const keyPath = process.env.CASPER_SECRET_KEY;
+  if (keyPath && fs.existsSync(keyPath)) {
+    return fs.readFileSync(keyPath, "utf8");
+  }
+
+  return undefined;
+}
+
 function isOnchainEnabled() {
   return (
     process.env.CASPER_ONCHAIN_ENABLED === "true" &&
-    Boolean(process.env.CASPER_CONTRACT_HASH && getCasperSecretKeyPath())
+    Boolean(process.env.CASPER_CONTRACT_HASH && getCasperSecretKeyPem())
   );
 }
 
-async function callGrantEscrow(entryPoint: string, sessionArgs: string[]) {
+type CasperArg = {
+  name: string;
+  cli: string;
+  sdk: CasperCLValue;
+};
+
+function casperArg(name: string, cli: string, sdk: CasperCLValue): CasperArg {
+  return { name, cli, sdk };
+}
+
+async function callGrantEscrow(entryPoint: string, sessionArgs: CasperArg[]) {
+  if (getCasperCallMode() === "client") {
+    return callGrantEscrowWithClient(entryPoint, sessionArgs);
+  }
+
+  return callGrantEscrowWithSdk(entryPoint, sessionArgs);
+}
+
+async function callGrantEscrowWithSdk(entryPoint: string, sessionArgs: CasperArg[]) {
+  const contractHash = process.env.CASPER_CONTRACT_HASH;
+  const secretKeyPem = getCasperSecretKeyPem();
+  const nodeAddress = process.env.CASPER_TESTNET_RPC_URL ?? "https://node.testnet.casper.network/rpc";
+
+  if (!contractHash || !secretKeyPem) {
+    throw new Error("CASPER_CONTRACT_HASH and CASPER_SECRET_KEY_PEM_BASE64 are required for Casper SDK calls");
+  }
+
+  const privateKey = PrivateKey.fromPem(secretKeyPem, getCasperKeyAlgorithm());
+  const args = Args.fromMap(Object.fromEntries(sessionArgs.map((arg) => [arg.name, arg.sdk])));
+  const session = new ExecutableDeployItem();
+  session.storedContractByHash = new StoredContractByHash(
+    ContractHash.newContract(stripHashPrefix(contractHash)),
+    entryPoint,
+    args
+  );
+
+  const payment = ExecutableDeployItem.standardPayment(process.env.CASPER_PAYMENT_AMOUNT ?? "30000000000");
+  const deployHeader = DeployHeader.default();
+  deployHeader.account = privateKey.publicKey;
+  deployHeader.chainName = "casper-test";
+
+  const deploy = Deploy.makeDeploy(deployHeader, payment, session);
+  deploy.sign(privateKey);
+
+  try {
+    const rpcClient = new RpcClient(new HttpHandler(nodeAddress));
+    const result = await rpcClient.putDeploy(deploy);
+    return { deployHash: normalizeDeployHash(result.deployHash), output: JSON.stringify(result) };
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(error.message || "Casper SDK deploy failed");
+    }
+    throw error;
+  }
+}
+
+async function callGrantEscrowWithClient(entryPoint: string, sessionArgs: CasperArg[]) {
   const contractHash = process.env.CASPER_CONTRACT_HASH;
   const secretKey = getCasperSecretKeyPath();
   const nodeAddress = process.env.CASPER_TESTNET_RPC_URL ?? "https://node.testnet.casper.network/rpc";
@@ -173,7 +269,7 @@ async function callGrantEscrow(entryPoint: string, sessionArgs: string[]) {
     stripHashPrefix(contractHash),
     "--session-entry-point",
     entryPoint,
-    ...sessionArgs.flatMap((arg) => ["--session-arg", arg])
+    ...sessionArgs.flatMap((arg) => ["--session-arg", arg.cli])
   ];
 
   let stdout = "";
@@ -202,6 +298,18 @@ async function callGrantEscrow(entryPoint: string, sessionArgs: string[]) {
   return { deployHash, output };
 }
 
+function newAccountHashKey(accountHash: string) {
+  return CLValue.newCLKey(Key.createByType(stripAccountHashPrefix(accountHash), 0));
+}
+
+function getCasperCallMode() {
+  return process.env.CASPER_CALL_MODE === "client" ? "client" : "sdk";
+}
+
+function getCasperKeyAlgorithm() {
+  return process.env.CASPER_KEY_ALGORITHM === "secp256k1" ? KeyAlgorithm.SECP256K1 : KeyAlgorithm.ED25519;
+}
+
 function isMissingExecutableError(error: unknown) {
   return Boolean(error && typeof error === "object" && "code" in error && error.code === "ENOENT");
 }
@@ -224,4 +332,8 @@ function parseDeployHash(output: string) {
     throw new Error(`Unable to parse Casper deploy hash from casper-client output: ${output}`);
   }
   return match[0];
+}
+
+function normalizeDeployHash(deployHash: string | CasperHash) {
+  return typeof deployHash === "string" ? deployHash : deployHash.toHex();
 }

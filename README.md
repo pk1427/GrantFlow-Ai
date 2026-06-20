@@ -5,7 +5,7 @@ GrantFlow AI is a Casper testnet MVP for milestone-based grant funding. A funder
 ## What Is Included
 
 - `apps/web`: Next.js 15, TypeScript, Tailwind UI for grant creation, evidence submission, reports, and release status.
-- `apps/api`: Express API with verification agents and the Casper service boundary.
+- `apps/api`: Express API with verification agents and Casper JS SDK calls for create/release.
 - `grant-escrow`: Odra smart contract plus a small Odra CLI wrapper used for attached-value escrow deposits.
 - `docker-compose.yml`: local PostgreSQL.
 
@@ -43,7 +43,7 @@ For local demo mode without Casper calls, set this in `apps/api/.env`:
 CASPER_ONCHAIN_ENABLED=false
 ```
 
-For live testnet mode, `casper-client` must be installed and `CASPER_SECRET_KEY` must point to a funded authorized releaser key file.
+For live testnet mode, set `CASPER_SECRET_KEY_PEM_BASE64` from the funded authorized releaser key. The API uses the Casper JS SDK by default, so hosted Node environments do not need `casper-client`.
 
 ## Environment Variables
 
@@ -68,7 +68,7 @@ Install Command: npm install
 
 ### API Runtime
 
-The current API uses the `casper-client` binary and a local secret key path, so deploy it to a host where you can install binaries and mount/store the key file, such as a VPS, Render, Railway, or Fly.io.
+The API uses `casper-js-sdk` by default and signs deploys from `CASPER_SECRET_KEY_PEM_BASE64`. This works on normal Node hosts such as Render, Koyeb, Fly.io, Railway, or a VPS.
 
 ```bash
 PORT=4001
@@ -77,10 +77,8 @@ CASPER_TESTNET_RPC_URL=https://node.testnet.casper.network/rpc
 CASPER_CONTRACT_HASH=hash-127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f
 CASPER_CONTRACT_PACKAGE_HASH=hash-3b795847d0b0dbc46a4e4b5f402e15a445b2ca33fc082480020e05686f181c52
 CASPER_AUTHORIZED_RELEASER=account-hash-1130715646e6847e65732ba746ecad6fce0f33ba4ac6c9f4f021674cea2ab3a5
-CASPER_SECRET_KEY=/secure/path/api-wallet/secret_key.pem
-# Railway alternative: set CASPER_SECRET_KEY_PEM_BASE64 instead of CASPER_SECRET_KEY.
+CASPER_CALL_MODE=sdk
 CASPER_SECRET_KEY_PEM_BASE64=base64_encoded_secret_key_pem
-CASPER_CLIENT_PATH=casper-client
 CASPER_PAYMENT_AMOUNT=30000000000
 CASPER_ONCHAIN_ENABLED=true
 CASPER_ONCHAIN_TESTNET_ENABLED=true
@@ -89,11 +87,19 @@ GITHUB_TOKEN=optional_for_higher_rate_limits
 
 Do not commit real secret keys or private-key contents.
 
-## Railway Backend Deployment
+Create the base64 secret from WSL:
 
-This repo includes a root `Dockerfile` and `railway.json` for deploying only the Express API. The Docker image installs `casper-client`, builds `apps/api`, and starts `npm run start --workspace @grantflow/api`.
+```bash
+base64 -w 0 ~/.casper/api-wallet/secret_key.pem
+```
 
-Required Railway variables:
+To force the old local binary path for debugging, set `CASPER_CALL_MODE=client`, `CASPER_SECRET_KEY=/path/to/secret_key.pem`, and make sure `casper-client` is installed.
+
+## Backend Deployment
+
+This repo includes a root `Dockerfile` and `railway.json` for deploying only the Express API. The Docker image builds `apps/api` and starts `npm run start --workspace @grantflow/api`.
+
+Required backend variables:
 
 ```bash
 PORT=4001
@@ -101,27 +107,21 @@ CASPER_TESTNET_RPC_URL=https://node.testnet.casper.network/rpc
 CASPER_CONTRACT_HASH=hash-127b6b05fc907d751f8672f71e9e0f1423b5ed62549c333ccadf91a6880ec81f
 CASPER_CONTRACT_PACKAGE_HASH=hash-3b795847d0b0dbc46a4e4b5f402e15a445b2ca33fc082480020e05686f181c52
 CASPER_AUTHORIZED_RELEASER=account-hash-1130715646e6847e65732ba746ecad6fce0f33ba4ac6c9f4f021674cea2ab3a5
+CASPER_CALL_MODE=sdk
 CASPER_SECRET_KEY_PEM_BASE64=base64_encoded_api_wallet_secret_key_pem
-CASPER_CLIENT_PATH=casper-client
 CASPER_PAYMENT_AMOUNT=30000000000
 CASPER_ONCHAIN_ENABLED=true
 CASPER_ONCHAIN_TESTNET_ENABLED=true
 ```
 
-Create the base64 secret from WSL:
+After deploy, test:
 
 ```bash
-base64 -w 0 ~/.casper/api-wallet/secret_key.pem
+curl https://YOUR_API_DOMAIN/health
+curl https://YOUR_API_DOMAIN/config
 ```
 
-After Railway deploys, test:
-
-```bash
-curl https://YOUR_RAILWAY_DOMAIN/health
-curl https://YOUR_RAILWAY_DOMAIN/config
-```
-
-Use the Railway domain as `NEXT_PUBLIC_API_URL` when deploying the frontend on Vercel.
+Use the API domain as `NEXT_PUBLIC_API_URL` when deploying the frontend on Vercel.
 
 ## Demo Flow
 
@@ -129,20 +129,14 @@ Use the Railway domain as `NEXT_PUBLIC_API_URL` when deploying the frontend on V
 2. Deposit escrow funds. With the current contract, attached CSPR must be sent through Odra's proxy call, documented in `grant-escrow/README.md`.
 3. Submit a GitHub repository URL and deployment URL.
 4. The API verifies repository accessibility, commit count, README, recency, deployment health, and risk.
-5. Click release payment. The API calls `release_payment(grant_id)` through `casper-client`.
+5. Click release payment. The API calls `release_payment(grant_id)` through the Casper JS SDK.
 6. Confirm the deploy hash on CSPR.live and check the report/dashboard.
 
 ## Casper Client vs SDK
 
-For the hackathon demo, keep the current `casper-client` path because it is already deployed and proven end-to-end on testnet.
+The API now uses the Casper JS SDK by default (`CASPER_CALL_MODE=sdk`). This is the deploy-friendly path because it signs from environment secrets and submits deploys directly over RPC.
 
-For a Vercel-hosted API or production architecture, migrate Casper calls to the Casper SDK. Vercel serverless functions are a poor fit for shelling out to `casper-client` and reading a PEM file from disk. The SDK should sign from a secret stored in the platform's secret manager and submit deploys directly over RPC.
-
-Recommended sequence:
-
-1. Ship the demo with current client flow.
-2. Deploy web on Vercel and API on a binary-capable host.
-3. After judging/demo, replace `apps/api/src/casper.ts` internals with SDK calls while keeping the same API routes.
+The previous `casper-client` path is still available with `CASPER_CALL_MODE=client` for local debugging. The Odra CLI wrapper in `grant-escrow` is still useful for the separate attached-value escrow deposit because that contract call needs value transfer behavior that was already proven end-to-end on testnet.
 
 ## API Endpoints
 
