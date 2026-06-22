@@ -16,6 +16,9 @@ export default function LandingPage() {
           <LinkButton href="/dashboard">
             Launch demo <ArrowRight size={17} />
           </LinkButton>
+          <LinkButton href="/whitepaper" className="border border-line bg-panel text-slate-100 hover:bg-slate-800">
+            Read whitepaper
+          </LinkButton>
           <LinkButton href="/grants/new" className="border border-line bg-transparent text-slate-100 hover:bg-panel">
             Create grant
           </LinkButton>

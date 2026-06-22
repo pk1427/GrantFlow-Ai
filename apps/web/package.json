@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "lint": "next lint",
+    "dev": "node ../../node_modules/next/dist/bin/next dev",
+    "build": "node ../../node_modules/next/dist/bin/next build",
+    "lint": "node ../../node_modules/next/dist/bin/next lint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

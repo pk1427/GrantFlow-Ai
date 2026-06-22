@@ -19,6 +19,7 @@ export function HeaderNav() {
   }, []);
 
   const links = [
+    { href: "/whitepaper", label: "Whitepaper" },
     { href: "/dashboard", label: "Dashboard" },
     { href: "/grants/new", label: "Create Grant" },
     { href: `/grants/${latestGrantId}`, label: "Latest Grant" }
