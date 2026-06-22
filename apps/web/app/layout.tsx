@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "GrantFlow AI",
-  description: "Autonomous milestone funding on Casper Network"
+  description: "Chain-agnostic milestone funding with a Casper reference implementation"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

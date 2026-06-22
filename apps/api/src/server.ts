@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { z } from "zod";
 import { runNotificationAgent, runRiskAgent, runVerificationAgent } from "./agents.js";
-import { createGrant, getCasperRuntimeConfig, releasePayment } from "./casper.js";
+import { createGrant, getCasperRuntimeConfig, releasePayment } from "./chains/casper.js";
 import { grants, submissions, transactions, type GrantRecord } from "./store.js";
 
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });

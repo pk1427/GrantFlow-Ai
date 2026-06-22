@@ -128,4 +128,6 @@ Expected final state after a complete flow: `funded=true`, `released=true`.
 
 ## Backend Notes
 
-The current Express API uses `casper-client` for `create_grant` and `release_payment`. For Vercel serverless or production, migrate those internals to the Casper SDK so signing and deploy submission do not depend on a local binary or filesystem key path.
+The Express API calls this contract through `apps/api/src/chains/casper.ts`. The default path uses the Casper JS SDK with `CASPER_SECRET_KEY_PEM_BASE64`, so hosted Node environments do not need a local `casper-client` binary for `create_grant` and `release_payment`.
+
+The `casper-client` fallback remains available for local debugging with `CASPER_CALL_MODE=client`.

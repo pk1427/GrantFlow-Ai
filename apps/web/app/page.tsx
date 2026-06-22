@@ -5,7 +5,7 @@ export default function LandingPage() {
   return (
     <div className="mx-auto grid min-h-[calc(100vh-73px)] max-w-6xl items-center gap-10 px-4 py-10 lg:grid-cols-[1.05fr_0.95fr]">
       <section>
-        <p className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-cyan">Casper testnet escrow</p>
+        <p className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-cyan">Casper reference escrow</p>
         <h1 className="max-w-3xl text-5xl font-bold leading-tight tracking-normal sm:text-6xl">
           GrantFlow AI
         </h1>

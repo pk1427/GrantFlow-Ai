@@ -1,6 +1,6 @@
 # GrantFlow AI
 
-GrantFlow AI is a Casper testnet MVP for milestone-based grant funding. A funder creates a grant, CSPR is escrowed on-chain, a builder submits evidence, verification agents inspect the work, and an authorized release wallet calls the Casper contract to release payment.
+GrantFlow AI is a chain-agnostic milestone funding protocol MVP with a live Casper Testnet reference implementation. A funder creates a grant, funds are escrowed on-chain, a builder submits evidence, verification agents inspect the work, and an authorized settlement adapter releases payment through the active chain.
 
 ## Live Demo
 
@@ -11,8 +11,10 @@ GrantFlow AI is a Casper testnet MVP for milestone-based grant funding. A funder
 ## What Is Included
 
 - `apps/web`: Next.js 15, TypeScript, Tailwind UI for grant creation, evidence submission, reports, and release status.
-- `apps/api`: Express API with verification agents and Casper JS SDK calls for create/release.
-- `grant-escrow`: Odra smart contract plus a small Odra CLI wrapper used for attached-value escrow deposits.
+- `apps/api`: Express API with verification agents and chain settlement adapters.
+- `apps/api/src/chains`: backend settlement adapter implementations. Casper is live; Base and Stellar are planned.
+- `chains`: chain-specific contract sources and deployment notes.
+- `chains/casper/contracts/grant-escrow`: Odra smart contract plus a small Odra CLI wrapper used for attached-value escrow deposits.
 - `docker-compose.yml`: local PostgreSQL.
 
 ## Verified Casper Testnet Deployment
@@ -132,7 +134,7 @@ Use the API domain as `NEXT_PUBLIC_API_URL` when deploying the frontend on Verce
 ## Demo Flow
 
 1. Create a grant from the UI. The API calls `create_grant(grant_id, builder, amount)` on Casper.
-2. Deposit escrow funds. With the current contract, attached CSPR must be sent through Odra's proxy call, documented in `grant-escrow/README.md`.
+2. Deposit escrow funds. With the current Casper contract, attached CSPR must be sent through Odra's proxy call, documented in `chains/casper/contracts/grant-escrow/README.md`.
 3. Submit a GitHub repository URL and deployment URL.
 4. The API verifies repository accessibility, commit count, README, recency, deployment health, and risk.
 5. Click release payment. The API calls `release_payment(grant_id)` through the Casper JS SDK.
@@ -142,7 +144,7 @@ Use the API domain as `NEXT_PUBLIC_API_URL` when deploying the frontend on Verce
 
 The API now uses the Casper JS SDK by default (`CASPER_CALL_MODE=sdk`). This is the deploy-friendly path because it signs from environment secrets and submits deploys directly over RPC.
 
-The previous `casper-client` path is still available with `CASPER_CALL_MODE=client` for local debugging. The Odra CLI wrapper in `grant-escrow` is still useful for the separate attached-value escrow deposit because that contract call needs value transfer behavior that was already proven end-to-end on testnet.
+The previous `casper-client` path is still available with `CASPER_CALL_MODE=client` for local debugging. The Odra CLI wrapper in `chains/casper/contracts/grant-escrow` is still useful for the separate attached-value escrow deposit because that contract call needs value transfer behavior that was already proven end-to-end on testnet.
 
 ## API Endpoints
 

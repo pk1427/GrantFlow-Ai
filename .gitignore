@@ -12,5 +12,5 @@ coverage
 *.log
 *.tsbuildinfo
 target
-grant-escrow/target
+chains/*/contracts/*/target
 .DS_Store

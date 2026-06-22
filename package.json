@@ -2,7 +2,7 @@
   "name": "grantflow-ai",
   "private": true,
   "version": "0.1.0",
-  "description": "Autonomous milestone-based funding protocol demo for Casper Network.",
+  "description": "Chain-agnostic programmable funding protocol with a Casper reference implementation.",
   "workspaces": [
     "apps/*"
   ],
